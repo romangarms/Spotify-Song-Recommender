@@ -22,7 +22,7 @@ Run app.py
 
 from http.client import HTTPException
 import os
-from flask import Flask, session, request, redirect, render_template
+from flask import Flask, session, request, redirect, render_template, jsonify
 from flask_session import Session
 import spotipy
 import sys
@@ -80,18 +80,36 @@ def sign_out():
 @app.route("/main")
 def currently_playing():
     spotify = get_spotify()
-    return render_template("main.html")
+    #get user playlists
+    results = spotify.current_user_playlists()
+
+    # trim down the results to only the name and id of the playlist
+    playlists = [{'name': item['name'], 'id': item['id']} for item in results['items']]
+
+    return render_template("main.html", playlists=playlists)
     
+from flask import request
+
+@app.route('/select-playlist', methods=['POST'])
+def select_playlist():
+    data = request.get_json()
+    playlist_id = data['playlist_id']
+    
+    # You could now analyze this playlist or save it to session, etc.
+    print(f"User selected playlist ID: {playlist_id}")
+    
+    return jsonify({"status": "ok", "selected": playlist_id})
+
 
 @app.errorhandler(HTTPException)
 def handle_exception(e):
     # Handle HTTP exceptions
-    return render_template("error.html", error=e), e.code
+    return render_template("error.html", error=e), e
 
 @app.errorhandler(Exception)
 def handle_exception(e):
     # Handle other exceptions
-    return render_template("error.html", error=e), e.code
+    return render_template("error.html", error=e), e
 
 
 def get_spotify():

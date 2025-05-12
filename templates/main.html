@@ -6,7 +6,33 @@
 
 {% block main %}
 <div id="outer">
-    
+    <ul id="playlist-list">
+        {% for playlist in playlists %}
+        <li data-id="{{ playlist.id }}" class="playlist-item">{{ playlist.name }}</li>
+        {% endfor %}
+    </ul>
 </div>
+
+
+<script>
+document.querySelectorAll('.playlist-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const playlistId = item.dataset.id;
+
+    fetch('/select-playlist', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ playlist_id: playlistId })
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('Playlist selected:', data);
+      // You can redirect or update the UI here
+    });
+  });
+});
+</script>
 
 {% endblock %}

@@ -104,3 +104,11 @@ html, body {
     max-width: 100%;
     overflow: hidden; /* Hide scrollbars */
 }
+
+ .playlist-item {
+    cursor: pointer;
+    padding: 5px;
+  }
+  .playlist-item:hover {
+    background-color: #eee;
+  }
