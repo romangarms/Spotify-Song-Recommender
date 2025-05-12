@@ -7,6 +7,8 @@
 {% block main %}
 <div id="outer">
     <ul id="playlist-list">
+        {{playlist_name}}
+
         {% for playlist in playlists %}
         <li data-id="{{ playlist.id }}" class="playlist-item">{{ playlist.name }}</li>
         {% endfor %}

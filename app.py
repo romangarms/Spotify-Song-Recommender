@@ -79,6 +79,7 @@ def sign_out():
 
 @app.route("/main")
 def currently_playing():
+
     spotify = get_spotify()
     #get user playlists
     results = spotify.current_user_playlists()
@@ -86,7 +87,14 @@ def currently_playing():
     # trim down the results to only the name and id of the playlist
     playlists = [{'name': item['name'], 'id': item['id']} for item in results['items']]
 
-    return render_template("main.html", playlists=playlists)
+    playlist = get_playlist()
+
+    playlist_name = None
+    if playlist:
+        # fetch playlist's name
+        playlist_name = playlist['name']
+        
+    return render_template("main.html", playlists=playlists, playlist=playlist, playlist_name=playlist_name)
     
 from flask import request
 
@@ -94,23 +102,14 @@ from flask import request
 def select_playlist():
     data = request.get_json()
     playlist_id = data['playlist_id']
+
+    # Store in the session (per-user, per-browser)
+    session['selected_playlist'] = playlist_id
     
     # You could now analyze this playlist or save it to session, etc.
     print(f"User selected playlist ID: {playlist_id}")
     
     return jsonify({"status": "ok", "selected": playlist_id})
-
-
-@app.errorhandler(HTTPException)
-def handle_exception(e):
-    # Handle HTTP exceptions
-    return render_template("error.html", error=e), e
-
-@app.errorhandler(Exception)
-def handle_exception(e):
-    # Handle other exceptions
-    return render_template("error.html", error=e), e
-
 
 def get_spotify():
     cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session)
@@ -119,6 +118,17 @@ def get_spotify():
         return redirect("/")
     return spotipy.Spotify(auth_manager=auth_manager)
 
+def get_playlist():
+    # Get the selected playlist ID from the session
+    selected_playlist = session.get('selected_playlist')
+
+    if selected_playlist:
+        # Fetch the playlist details using Spotipy
+        spotify = get_spotify()
+        playlist = spotify.playlist(selected_playlist)
+        return playlist
+    else:
+        return None
 
 """
 Following lines allow application to be run more conveniently with
