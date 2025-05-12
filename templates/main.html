@@ -6,35 +6,43 @@
 
 {% block main %}
 <div id="outer">
-    <ul id="playlist-list">
-        {{playlist_name}}
+  {{playlist_name}}
+  <a href="{{new_playlist_url}}">View your new playlist: {{new_playlist_name}}</a>
 
-        {% for playlist in playlists %}
-        <li data-id="{{ playlist.id }}" class="playlist-item">{{ playlist.name }}</li>
-        {% endfor %}
-    </ul>
+  <a href="/reset">Reset</a>
+
+  <form action="/make-playlist" method="post">
+    <button type="submit" >Make Playlist</button>
+  </form>
+
+  <ul id="playlist-list">
+    {% for playlist in playlists %}
+    <li data-id="{{ playlist.id }}" class="playlist-item">{{ playlist.name }}</li>
+    {% endfor %}
+  </ul>
 </div>
 
 
 <script>
-document.querySelectorAll('.playlist-item').forEach(item => {
-  item.addEventListener('click', () => {
-    const playlistId = item.dataset.id;
+  document.querySelectorAll('.playlist-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const playlistId = item.dataset.id;
 
-    fetch('/select-playlist', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ playlist_id: playlistId })
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log('Playlist selected:', data);
-      // You can redirect or update the UI here
+      fetch('/select-playlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ playlist_id: playlistId })
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Playlist selected:', data);
+          // You can redirect or update the UI here
+          location.reload();
+        });
     });
   });
-});
 </script>
 
 {% endblock %}
