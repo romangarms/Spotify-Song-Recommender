@@ -1,6 +1,6 @@
 :root {
-  --main-spot-color: #1DB954;
-  --accent-color: #91cc96;
+    --main-spot-color: #1DB954;
+    --accent-color: #91cc96;
 }
 
 #left {
@@ -37,6 +37,7 @@
     width: 20%;
     color: white;
     padding-right: 2%;
+    text-align: center;
 }
 
 #outer {
@@ -46,6 +47,19 @@
     padding-top: 1%;
     margin: 0;
     position: absolute;
+}
+
+.image-cropper {
+    width: 200px;
+    height: 200px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 50%;
+    margin: 0 auto;
+}
+
+#pfp {
+    height: 100%;
 }
 
 
@@ -112,4 +126,3 @@ ul {
 p {
     font-size: 25px;
 }
-

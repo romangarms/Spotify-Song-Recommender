@@ -30,7 +30,15 @@
 <body>
     <div id="outer">
         <div id="sidebar">
-            {% block sidebar %}{% endblock %}
+            <h1>Spotify Song Recommender</h1>
+            <br>
+            <div class="image-cropper">
+                <img id="pfp" src="{{pfp}}">
+            </div>
+            <h2>Welcome, {{username}}!</h2>
+
+
+
         </div>
         <div id="left">
             {% block left %}{% endblock %}
