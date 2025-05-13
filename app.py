@@ -102,13 +102,15 @@ def currently_playing():
 
     if new_playlist:
         # fetch playlist's name
-        new_playlist_name = spotify.playlist(new_playlist)['name']
+        new_playlist_name = session.get("playlistTitle")
         new_playlist_url = f"https://open.spotify.com/playlist/{new_playlist}"
+        taste_analysis = session.get("tasteAnalysis")
     else:
         new_playlist_name = "No new playlist created, generate one?"
         new_playlist_url = None
+        taste_analysis = "No playlist description available"
         
-    return render_template("main.html", playlists=playlists, playlist_name=playlist_name, new_playlist_name=new_playlist_name, new_playlist_url=new_playlist_url, username=username)
+    return render_template("main.html", playlists=playlists, playlist_name=playlist_name, new_playlist_name=new_playlist_name, new_playlist_url=new_playlist_url, taste_analysis=taste_analysis, username=username)
 
 @app.route('/select_playlist', methods=['POST'])
 def select_playlist():
@@ -138,11 +140,15 @@ def create_playlist():
 
     session["new_playlist"] = new_playlist['id']
 
+    # go hit the logic API and generate the playlist
     call_logic()
 
     return redirect("/main")
 
 def call_logic():
+    """
+    Use the Logic API to analyze the selected playlist and generate a new playlist
+    """
 
     template_playlist = session.get("selected_playlist")
     new_playlist = session.get("new_playlist")
@@ -188,10 +194,10 @@ def call_logic():
             }
         )
     
+    session["playlistTitle"] = response.json()['output']['playlistTitle']
+    session["tasteAnalysis"] = response.json()['output']['tasteAnalysis']
     add_recommendations_to_playlist(response.json(), new_playlist)
-
-    return response.json()
-
+    return redirect("/main")
 
 
 def add_recommendations_to_playlist(response, playlist_id):
