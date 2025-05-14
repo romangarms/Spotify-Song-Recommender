@@ -238,8 +238,12 @@ def make_playlist_from_text_with_logic():
     response = requests.post(
         "https://api.logic.inc/2024-03-01/documents/recommend-songs-from-playlist/executions",
         headers=headers,
-        json={"playlistDescription": track_data_json},
+        json={"description": text_description},
     )
+
+    session["playlistTitle"] = response.json()["output"]["playlistTitle"]
+    add_recommendations_to_playlist(response.json(), new_playlist)
+    return redirect("playlist_from_text")
 
 
 def analyze_playlist_with_logic():
@@ -313,7 +317,7 @@ def add_recommendations_to_playlist(response, playlist_id):
 
     for rec in recommendations:
         name = rec.get("name")
-        artist = rec.get("artist")[0] if rec.get("artist") else ""
+        artist = rec.get("artist")
         query = f"track:{name} artist:{artist}"
 
         try:
