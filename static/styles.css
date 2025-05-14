@@ -103,11 +103,12 @@ form {
 
 form button {
     font-size: 40px;
+    line-height: 40px;
     overflow: hidden;
     white-space: nowrap;
     width: 100%;
     text-overflow: ellipsis;
-    margin-top: 10px;
+    margin: auto;
     padding: 10px;
     background-color: var(--main-spot-color);
     color: white;
@@ -115,6 +116,20 @@ form button {
     border-radius: 5px;
     cursor: pointer;
     height: 5vh;
+
+}
+
+a button {
+    font-size: 25px !important;
+    background-color: var(--main-spot-color) !important;
+    border-color: var(--main-spot-color) !important;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    height: 5vh;
+    width: 100%;
+    margin: 2px;
 }
 
 ul {
