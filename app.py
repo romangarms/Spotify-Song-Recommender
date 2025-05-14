@@ -124,6 +124,7 @@ def playlist_analyzer():
         pfp=pfp,
     )
 
+
 @app.route("/playlist_from_text")
 def playlist_maker():
 
@@ -150,12 +151,14 @@ def playlist_maker():
         pfp=pfp,
     )
 
+
 @app.route("/describe_playlist", methods=["POST"])
 def describe_playlist():
     data = request.get_json()
-    description = data.get('description')
+    description = data.get("description")
 
     session["playlist_description"] = description
+
 
 @app.route("/select_playlist", methods=["POST"])
 def select_playlist():
@@ -172,19 +175,22 @@ def select_playlist():
 
     return jsonify({"status": "ok", "selected": playlist_id})
 
-@app.route('/generate-from-text', methods=['POST'])
+
+@app.route("/generate-from-text", methods=["POST"])
 def generate_from_text():
     """
     Generate a playlist from a text description
     """
     create_playlist("text")
 
-@app.route('/generate-from-playlist', methods=['POST'])
+
+@app.route("/generate-from-playlist", methods=["POST"])
 def generate_from_playlist():
     """
     Generate a playlist from a selected playlist
     """
     create_playlist("playlist")
+
 
 @app.route("/create_playlist", methods=["POST"])
 def create_playlist(mode="playlist"):
@@ -207,7 +213,6 @@ def create_playlist(mode="playlist"):
     elif mode == "text":
         # go hit the logic API and generate the playlist
         make_playlist_from_text_with_logic()
-    
 
     return redirect("playlist_from_playlist")
 
@@ -225,7 +230,7 @@ def make_playlist_from_text_with_logic():
         spotify = get_spotify()
     else:
         return None
-    
+
     print("text retrieved")
 
     LOGIC_API_TOKEN = os.getenv("LOGIC_API_TOKEN")
