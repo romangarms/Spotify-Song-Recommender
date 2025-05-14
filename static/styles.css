@@ -40,6 +40,10 @@
     text-align: center;
 }
 
+#sidebar h1 {
+    font-size: 35px;
+}
+
 #outer {
     width: 100%;
     display: flex;
@@ -102,8 +106,8 @@ form {
 }
 
 form button {
-    font-size: 40px;
-    line-height: 40px;
+    font-size: 30px;
+    line-height: 30px;
     overflow: hidden;
     white-space: nowrap;
     width: 100%;
@@ -120,7 +124,7 @@ form button {
 }
 
 a button {
-    font-size: 25px !important;
+    font-size: 20px !important;
     background-color: var(--main-spot-color) !important;
     border-color: var(--main-spot-color) !important;
     color: white;
@@ -139,5 +143,5 @@ ul {
 }
 
 p {
-    font-size: 25px;
+    font-size: 20px;
 }

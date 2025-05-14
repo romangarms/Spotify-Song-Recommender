@@ -22,51 +22,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;900&display=swap" rel=stylesheet>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="/static/styles.css" rel="stylesheet">
-    {% block title %}{% endblock %}
+    {% block title %}
+
+    {% endblock %}
 
 
 </head>
 
 <body>
-    <div id="outer">
-        <div id="sidebar">
-            <h1>Spotify Song Recommender</h1>
-            <br>
-            <div class="image-cropper">
-                <img id="pfp" src="{{pfp}}">
-            </div>
-            <h2>Welcome, {{username}}!</h2>
-
-            <br>
-
-            <a href="/playlist_from_playlist">
-                <button class="btn btn-primary">Playlist from Playlist</button>
-            </a>
-
-            <a href="/playlist_from_text">
-                <button class="btn btn-primary">Playlist from Text</button>
-            </a>
-
-            <br>
-            <br>
-
-            <h2>Sign Out:</h2>
-            <p>Click the button below to sign out of your account.</p>
-            <form action="/sign_out">
-                <button type="submit">Sign Out</button>
-            </form>
-
-
-        </div>
-        <div id="left">
-            {% block left %}{% endblock %}
-        </div>
-        <div id="right">
-            {% block right %}{% endblock %}
-        </div>
-    </div>
     {% block main %}{% endblock %}
-
 
 </body>
 

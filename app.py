@@ -105,13 +105,13 @@ def playlist_analyzer():
 
     if new_playlist:
         # fetch playlist's name
-        new_playlist_name = session.get("playlistTitle")
+        new_playlist_name = session.get("newPlaylistTitle")
         new_playlist_url = f"https://open.spotify.com/playlist/{new_playlist}"
-        taste_analysis = session.get("tasteAnalysis")
+        new_playlist_description = session.get("newPlaylistDescription")
     else:
         new_playlist_name = "No new playlist created, generate one?"
         new_playlist_url = None
-        taste_analysis = "No playlist description available"
+        new_playlist_description = "No playlist description available"
 
     return render_template(
         "playlist_from_playlist.html",
@@ -119,7 +119,7 @@ def playlist_analyzer():
         playlist_name=playlist_name,
         new_playlist_name=new_playlist_name,
         new_playlist_url=new_playlist_url,
-        taste_analysis=taste_analysis,
+        new_playlist_description=new_playlist_description,
         username=username,
         pfp=pfp,
     )
@@ -133,20 +133,25 @@ def playlist_maker():
 
     new_playlist = session.get("new_playlist")
 
+    pfp = spotify.me()["images"][0]["url"] if spotify.me()["images"] else None
+
     if new_playlist:
         # fetch playlist's name
-        new_playlist_name = session.get("playlistTitle")
+        new_playlist_name = session.get("newPlaylistTitle")
         new_playlist_url = f"https://open.spotify.com/playlist/{new_playlist}"
+        new_playlist_description = session.get("newPlaylistDescription")
+
     else:
         new_playlist_name = "No new playlist created, generate one?"
         new_playlist_url = None
+        new_playlist_description = "No playlist description available"
 
-    pfp = spotify.me()["images"][0]["url"] if spotify.me()["images"] else None
 
     return render_template(
         "playlist_from_text.html",
         new_playlist_name=new_playlist_name,
         new_playlist_url=new_playlist_url,
+        new_playlist_description=new_playlist_description,
         username=username,
         pfp=pfp,
     )
@@ -158,6 +163,11 @@ def describe_playlist():
     description = data.get("description")
 
     session["playlist_description"] = description
+
+    if description:
+        session["playlist_description"] = description  # Save it per user
+        return jsonify({"status": "ok", "saved": description})
+    return jsonify({"status": "error", "message": "No description provided"}), 400
 
 
 @app.route("/select_playlist", methods=["POST"])
@@ -182,6 +192,7 @@ def generate_from_text():
     Generate a playlist from a text description
     """
     create_playlist("text")
+    return redirect("/playlist_from_text")
 
 
 @app.route("/generate-from-playlist", methods=["POST"])
@@ -190,6 +201,7 @@ def generate_from_playlist():
     Generate a playlist from a selected playlist
     """
     create_playlist("playlist")
+    return redirect("/playlist_from_playlist")
 
 
 @app.route("/create_playlist", methods=["POST"])
@@ -214,7 +226,7 @@ def create_playlist(mode="playlist"):
         # go hit the logic API and generate the playlist
         make_playlist_from_text_with_logic()
 
-    return redirect("playlist_from_playlist")
+    return redirect("/playlist_from_playlist")
 
 
 def make_playlist_from_text_with_logic():
@@ -246,9 +258,9 @@ def make_playlist_from_text_with_logic():
         json={"description": text_description},
     )
 
-    session["playlistTitle"] = response.json()["output"]["playlistTitle"]
+    session["newPlaylistTitle"] = response.json()["output"]["playlistTitle"]
     add_recommendations_to_playlist(response.json(), new_playlist)
-    return redirect("playlist_from_text")
+    return redirect("/playlist_from_text")
 
 
 def analyze_playlist_with_logic():
@@ -275,6 +287,7 @@ def analyze_playlist_with_logic():
     for track in tracks:
         track_info = {
             "name": track["track"]["name"],
+            # only read the first artist
             "artist": track["track"]["artists"][0]["name"],
             "album": track["track"]["album"]["name"],
             "release_date": track["track"]["album"]["release_date"],
@@ -296,8 +309,8 @@ def analyze_playlist_with_logic():
         json={"playlistJson": track_data_json},
     )
 
-    session["playlistTitle"] = response.json()["output"]["playlistTitle"]
-    session["tasteAnalysis"] = response.json()["output"]["tasteAnalysis"]
+    session["newPlaylistTitle"] = response.json()["output"]["playlistTitle"]
+    session["newPlaylistDescription"] = response.json()["output"]["playlistDesc"]
     add_recommendations_to_playlist(response.json(), new_playlist)
     return redirect("playlist_from_playlist")
 
