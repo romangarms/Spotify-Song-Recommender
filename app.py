@@ -56,7 +56,7 @@ def index():
     #print(os.getenv("SPOTIPY_CLIENT_ID"))
     cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session)
     auth_manager = spotipy.oauth2.SpotifyOAuth(
-        scope="playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public",
+        scope="playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-read",
         cache_handler=cache_handler,
         show_dialog=False,
     )
@@ -95,6 +95,9 @@ def playlist_analyzer():
 
     # trim down the results to only the name and id of the playlist
     playlists = [{"name": item["name"], "id": item["id"]} for item in results["items"]]
+
+    # ✅ Add Liked Songs as a special "playlist"
+    playlists.insert(0, {"name": "Liked Songs ❤️", "id": "liked_songs"})
 
     playlist = get_playlist()
     new_playlist = session.get("new_playlist")
@@ -276,7 +279,7 @@ def analyze_playlist_with_logic():
     if new_playlist and template_playlist:
         # Fetch the playlist details using Spotipy
         spotify = get_spotify()
-        t_playlist = spotify.playlist(template_playlist)
+        t_playlist = get_playlist()
     else:
         return None
 
@@ -382,14 +385,38 @@ def get_spotify():
 def get_playlist():
     # Get the selected playlist ID from the session
     selected_playlist = session.get("selected_playlist")
-
-    if selected_playlist:
-        # Fetch the playlist details using Spotipy
-        spotify = get_spotify()
-        playlist = spotify.playlist(selected_playlist)
-        return playlist
-    else:
+    if not selected_playlist:
         return None
+
+    spotify = get_spotify()
+
+    if selected_playlist == "liked_songs":
+        # Simulate a playlist object for Liked Songs
+        liked_tracks = []
+
+        offset = 0
+        while True:
+            results = spotify.current_user_saved_tracks(limit=50, offset=offset)
+            items = results["items"]
+            if not items:
+                break
+            liked_tracks.extend(items)
+            offset += 50
+            if len(liked_tracks) >= 200:
+                break  # cap it if needed
+
+        # Return a fake "playlist" object
+        return {
+            "name": "Liked Songs ❤️",
+            "id": "liked_songs",
+            "tracks": {
+                "items": liked_tracks
+            }
+        }
+
+    else:
+        # Normal playlist
+        return spotify.playlist(selected_playlist)
 
 
 """
