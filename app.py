@@ -53,6 +53,7 @@ def debug():
 
 @app.route("/")
 def index():
+    #print(os.getenv("SPOTIPY_CLIENT_ID"))
     cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session)
     auth_manager = spotipy.oauth2.SpotifyOAuth(
         scope="playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public",
