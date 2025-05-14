@@ -278,7 +278,6 @@ def analyze_playlist_with_logic():
 
     if new_playlist and template_playlist:
         # Fetch the playlist details using Spotipy
-        spotify = get_spotify()
         t_playlist = get_playlist()
     else:
         return None
