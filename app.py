@@ -20,14 +20,14 @@ Run app.py
     Alternatively, run using the launch.json under .vscode/ with the VSCode debugger
 """
 
-from http.client import HTTPException
 import os
 from flask import Flask, session, request, redirect, render_template, jsonify
 from flask_session import Session
 import spotipy
 import sys
-import requests
-import time
+
+from logic.spotify import get_spotify, get_playlist
+from logic.logic_api import analyze_playlist_with_logic, make_playlist_from_text_with_logic
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(64)
@@ -231,191 +231,6 @@ def create_playlist(mode="playlist"):
         make_playlist_from_text_with_logic()
 
     return redirect("/playlist_from_playlist")
-
-
-def make_playlist_from_text_with_logic():
-    """
-    Use the Logic API to create a playlist from a text description
-    """
-
-    new_playlist = session.get("new_playlist")
-    text_description = session.get("playlist_description")
-
-    if new_playlist and text_description:
-        # Fetch the playlist details using Spotipy
-        spotify = get_spotify()
-    else:
-        return None
-
-    print("text retrieved")
-
-    LOGIC_API_TOKEN = os.getenv("LOGIC_API_TOKEN")
-
-    headers = {
-        "Authorization": f"Bearer {LOGIC_API_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-    response = requests.post(
-        "https://api.logic.inc/2024-03-01/documents/recommend-songs-from-playlist/executions",
-        headers=headers,
-        json={"description": text_description},
-    )
-
-    session["newPlaylistTitle"] = response.json()["output"]["playlistTitle"]
-    add_recommendations_to_playlist(response.json(), new_playlist)
-    return redirect("/playlist_from_text")
-
-
-def analyze_playlist_with_logic():
-    """
-    Use the Logic API to analyze the selected playlist and generate a new playlist
-    """
-
-    template_playlist = session.get("selected_playlist")
-    new_playlist = session.get("new_playlist")
-    t_playlist = None
-
-    if new_playlist and template_playlist:
-        # Fetch the playlist details using Spotipy
-        t_playlist = get_playlist()
-    else:
-        return None
-
-    print("playlists retrieved")
-
-    # convert playlist to json of track names, artists names, album names, and release date
-    tracks = t_playlist["tracks"]["items"]
-    track_data = []
-    for track in tracks:
-        track_info = {
-            "name": track["track"]["name"],
-            # only read the first artist
-            "artist": track["track"]["artists"][0]["name"],
-            "album": track["track"]["album"]["name"],
-            "release_date": track["track"]["album"]["release_date"],
-        }
-        track_data.append(track_info)
-    # convert to json
-    track_data_json = {"tracks": track_data}
-
-    LOGIC_API_TOKEN = os.getenv("LOGIC_API_TOKEN")
-
-    headers = {
-        "Authorization": f"Bearer {LOGIC_API_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-    response = requests.post(
-        "https://api.logic.inc/2024-03-01/documents/recommend-songs-from-playlist/executions",
-        headers=headers,
-        json={"playlistJson": track_data_json},
-    )
-
-    session["newPlaylistTitle"] = response.json()["output"]["playlistTitle"]
-    session["newPlaylistDescription"] = response.json()["output"]["playlistDesc"]
-    add_recommendations_to_playlist(response.json(), new_playlist)
-    return redirect("playlist_from_playlist")
-
-
-def add_recommendations_to_playlist(response, playlist_id):
-    """
-    Given a Spotipy client `sp`, a list of LLM track recommendations, and a target Spotify `playlist_id`,
-    this function searches for the recommended tracks on Spotify and adds them to the playlist.
-    """
-
-    recommendations = response["output"]["recommendations"]
-    playlist_title = response["output"]["playlistTitle"]
-    playlist_desc = response["output"]["playlistDesc"]
-    sp = get_spotify()
-
-    sp.playlist_change_details(
-        playlist_id, name=playlist_title, description=playlist_desc
-    )
-
-    track_ids = []
-    not_found = []
-
-    for rec in recommendations:
-        name = rec.get("name")
-        artist = rec.get("artist")
-        query = f"track:{name} artist:{artist}"
-
-        try:
-            result = sp.search(q=query, type="track", limit=1)
-            items = result["tracks"]["items"]
-            if items:
-                track_id = items[0]["id"]
-                track_ids.append(track_id)
-                print(f"✅ Found: {name} by {artist}")
-            else:
-                not_found.append(f"{name} by {artist}")
-                print(f"❌ Not found: {name} by {artist}")
-
-        except Exception as e:
-            not_found.append(f"{name} by {artist}")
-            print(f"❌ Error searching {name} by {artist}: {e}")
-
-        time.sleep(0.1)  # prevent rate-limiting
-
-    if track_ids:
-        try:
-            # Spotify allows adding up to 100 tracks at once
-            for i in range(0, len(track_ids), 100):
-                sp.playlist_add_items(playlist_id, track_ids[i : i + 100])
-            print(f"\n🎉 Added {len(track_ids)} track(s) to the playlist!")
-        except Exception as e:
-            print(f"🚨 Error adding tracks to playlist: {e}")
-
-    if not_found:
-        print("\n⚠️ The following tracks could not be found on Spotify:")
-        for entry in not_found:
-            print(f"  - {entry}")
-
-
-def get_spotify():
-    cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session)
-    auth_manager = spotipy.oauth2.SpotifyOAuth(cache_handler=cache_handler)
-    if not auth_manager.validate_token(cache_handler.get_cached_token()):
-        return redirect("/")
-    return spotipy.Spotify(auth_manager=auth_manager)
-
-
-def get_playlist():
-    # Get the selected playlist ID from the session
-    selected_playlist = session.get("selected_playlist")
-    if not selected_playlist:
-        return None
-
-    spotify = get_spotify()
-
-    if selected_playlist == "liked_songs":
-        # Simulate a playlist object for Liked Songs
-        liked_tracks = []
-
-        offset = 0
-        while True:
-            results = spotify.current_user_saved_tracks(limit=50, offset=offset)
-            items = results["items"]
-            if not items:
-                break
-            liked_tracks.extend(items)
-            offset += 50
-            if len(liked_tracks) >= 200:
-                break  # cap it if needed
-
-        # Return a fake "playlist" object
-        return {
-            "name": "Liked Songs ❤️",
-            "id": "liked_songs",
-            "tracks": {
-                "items": liked_tracks
-            }
-        }
-
-    else:
-        # Normal playlist
-        return spotify.playlist(selected_playlist)
 
 
 """
