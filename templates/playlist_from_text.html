@@ -12,19 +12,20 @@
 
   <br>
 
+  <h2>Generate a new playlist:</h2>
+  <p>Click the button below to generate a new playlist based on the selected playlist on the right.</p>
+  <form action="/generate-from-text" method="post">
+    <button type="submit">Generate New Playlist</button>
+  </form>
+
+  <br>
+
   <h2>View your new playlist:</h2>
   <p>{{new_playlist_description}}</p>
   <form action="{{new_playlist_url}}">
     <button type="submit">{{new_playlist_name}}</button>
   </form>
 
-  <br>
-
-  <h2>Generate a new playlist:</h2>
-  <p>Click the button below to generate a new playlist based on the selected playlist on the right.</p>
-  <form action="/generate-from-text" method="post">
-    <button type="submit">Generate New Playlist</button>
-  </form>
 </div>
 {% endblock %}
 
@@ -35,6 +36,9 @@
     <textarea id="description" placeholder="Describe your playlist..." rows="10" cols="30"></textarea>
   </form>
 </div>
+
+
+
 {% endblock %}
 
 {% block main %}
