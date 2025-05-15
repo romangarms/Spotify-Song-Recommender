@@ -44,10 +44,10 @@ You can see the example Logic documents under `/logic_documents` in this repo. F
 
 (For now, you'll need to set the addresses of your Logic docs inside the logic_api.py file)
 
-### Step 4: Create a Logic API key
+### Step 5: Create a Logic API key
 In the [Logic dashboard](https://app.logic.inc), select your account in the bottom left and choose `API Keys`. Create a new key, and make a note of it, you'll need it shortly.
 
-### Step 5: Set environment variables and run!
+### Step 6: Set environment variables and run!
 You need to set 4 environment variables:
 - `LOGIC_API_TOKEN` needs to be set to your Logic API key
 - `SPOTIPY_REDIRECT_URI` needs to be set to 'http://127.0.0.1:5000' if you're hosting locally, otherwise choose the URI you chose in the Spotify developer app
