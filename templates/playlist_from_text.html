@@ -8,11 +8,12 @@
 <div>
   <h2>Enter text to describe your next playlist:</h2>
   <p>Describe your ideal playlist in the text box below. The more specific you are, the better the
-    recommendations will be! 
+    recommendations will be!
   </p>
   <br>
   <form action="">
-    <textarea id="description" class="form-control" placeholder="Describe your playlist... summer vibes, modern indie, upbeat?" rows="10" ></textarea>
+    <textarea id="description" class="form-control"
+      placeholder="Describe your playlist... summer vibes, modern indie, upbeat?" rows="10"></textarea>
   </form>
 </div>
 {% endblock %}
@@ -27,22 +28,23 @@
 
   <h2>Generate a new playlist:</h2>
   <p>Click the button below to generate a new playlist based on the text description on the left.</p>
-  <form action="/generate-from-text" method="post">
-    <button type="submit">Generate New Playlist</button>
+  <form id="generate-form" action="/generate-from-text" method="post">
+    <button id="generate-button" type="submit">Generate New Playlist</button>
   </form>
 
   <br>
 
   <h2>View your new playlist:</h2>
-  <p>{{new_playlist_description}}</p>
-  <form action="{{new_playlist_url}}">
-    <button type="submit">{{new_playlist_name}}</button>
+  <p id="playlist-desc">{{new_playlist_description}}</p>
+  <form id="playlist-name-form" action="{{new_playlist_url}}">
+    <button id="playlist-name-button" type="submit">{{new_playlist_name}}</button>
   </form>
 
 </div>
 {% endblock %}
 
 {% block main %}
+<!-- This script handles sending the description to the server when the user stops typing -->
 <script>
   let typingTimer;
   const doneTypingInterval = 1000; // milliseconds to wait after user stops typing
@@ -69,4 +71,5 @@
   }
 </script>
 
+<script type="text/javascript" src="/static/js/dynamic_buttons.js"></script>
 {% endblock %}

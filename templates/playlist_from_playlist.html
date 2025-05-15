@@ -26,21 +26,22 @@
 
   <h2>Generate a new playlist:</h2>
   <p>Click the button below to generate a new playlist based on the selected playlist on the left.</p>
-  <form action="/generate-from-playlist" method="post">
-    <button type="submit">Generate New Playlist</button>
+  <form id="generate-form" action="/generate-from-playlist" method="post">
+    <button id="generate-button" type="submit">Generate New Playlist</button>
   </form>
 
   <br>
 
   <h2>View your new playlist:</h2>
-  <p>{{new_playlist_description}}</p>
-  <form action="{{new_playlist_url}}">
-    <button type="submit">{{new_playlist_name}}</button>
+  <p id="playlist-desc">{{new_playlist_description}}</p>
+  <form id="playlist-name-form" action="{{new_playlist_url}}">
+    <button id="playlist-name-button" type="submit">{{new_playlist_name}}</button>
   </form>
 </div>
 {% endblock %}
 
 {% block main %}
+<!-- This script handles choosing a playlist -->
 <script>
   document.querySelectorAll('.playlist-item').forEach(item => {
     item.addEventListener('click', () => {
@@ -62,5 +63,7 @@
     });
   });
 </script>
+
+<script type="text/javascript" src="/static/js/dynamic_buttons.js"></script>
 
 {% endblock %}

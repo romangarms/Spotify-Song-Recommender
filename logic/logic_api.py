@@ -1,7 +1,8 @@
 from flask import session, redirect
 import requests
 import os
-from logic.spotify import get_spotify, get_playlist, add_recommendations_to_playlist
+from logic.spotify import get_playlist, add_recommendations_to_playlist
+
 
 def make_playlist_from_text_with_logic():
     """
@@ -11,10 +12,7 @@ def make_playlist_from_text_with_logic():
     new_playlist = session.get("new_playlist")
     text_description = session.get("playlist_description")
 
-    if new_playlist and text_description:
-        # Fetch the playlist details using Spotipy
-        spotify = get_spotify()
-    else:
+    if not new_playlist and not text_description:
         return None
 
     print("text retrieved")
