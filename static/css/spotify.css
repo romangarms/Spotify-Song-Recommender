@@ -25,3 +25,11 @@
     font-weight: bold;
     border-left: 4px solid var(--main-spot-color);
 }
+
+@media only screen and (max-width: 1080px) {
+    .playlist-item {
+    cursor: pointer;
+    font-size: 16px;
+    padding: 6px 0px;
+}
+}

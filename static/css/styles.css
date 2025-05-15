@@ -1,6 +1,7 @@
 :root {
     --main-spot-color: #1DB954;
     --accent-color: #91cc96;
+    --button-font-size: 20px;
 }
 
 #left {
@@ -10,10 +11,7 @@
     color: white;
     padding: 2%;
     margin-right: 1%;
-    border-top-right-radius: 50px;
-    border-top-left-radius: 50px;
-    border-bottom-right-radius: 50px;
-    border-bottom-left-radius: 50px;
+    border-radius: 50px;
 }
 
 #right {
@@ -24,10 +22,7 @@
     color: white;
     padding: 2%;
     margin-left: 1%;
-    border-top-right-radius: 50px;
-    border-top-left-radius: 50px;
-    border-bottom-right-radius: 50px;
-    border-bottom-left-radius: 50px;
+    border-radius: 50px;
 }
 
 #sidebar {
@@ -42,6 +37,23 @@
     font-size: 35px;
 }
 
+#header {
+    display: none;
+    left: 0;
+    top: 0px;
+    width: 100%;
+    background-color: var(--main-spot-color);
+
+    padding: 2%;
+}
+
+#header a button {
+    width: 48%;
+    border-color: #000000 !important;
+    border-style: solid;
+    border-width: 2px;
+}
+
 #footer {
     display: none;
     position: fixed;
@@ -49,24 +61,37 @@
     bottom: 0;
     width: 100%;
     background-color: var(--main-spot-color);
+
+    padding: 2%;
+    padding-bottom: 0%;
 }
 
 @media only screen and (max-width: 1080px) {
     #sidebar {
         display: none;
     }
+    #header {
+        display: block;
+    }
 
     #footer {
         display: block;
     }
 
-    #left {
+    #left,#right {
         width: 50% !important;
+        padding: 3%;
+        border-radius: 20px;
+
     }
 
-    #right {
-        width: 50% !important;
+    #left, #right p {
+        font-size: 16px;
     }
+
+    :root {
+    --button-font-size: 15px;
+}
 }
 
 #outer {
@@ -92,14 +117,14 @@ form {
 }
 
 form button {
-    font-size: 20px;
+    font-size: var(--button-font-size);
     line-height: 20px;
     overflow: hidden;
     white-space: nowrap;
     width: 100%;
     text-overflow: ellipsis;
     margin: auto;
-    padding: 10px;
+    padding: 5px;
     background-color: var(--main-spot-color);
     color: white;
     border: none;
@@ -107,12 +132,13 @@ form button {
     cursor: pointer;
     height: 5vh;
 
+    border-color: #000000 !important;
+    border-style: solid;
 }
 
 a button {
-    font-size: 20px !important;
+    font-size: var(--button-font-size) !important;
     background-color: var(--main-spot-color) !important;
-    border-color: var(--main-spot-color) !important;
     color: white;
     border: none;
     border-radius: 5px;
@@ -120,10 +146,13 @@ a button {
     height: 5vh;
     width: 100%;
     margin: 2px;
+
+    border-color: #000000 !important;
+    border-style: solid;
 }
 
 a {
-    font-size: 20px !important;
+    font-size: var(--button-font-size) !important;
     color: white;
 }
 
