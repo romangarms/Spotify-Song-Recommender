@@ -1,5 +1,5 @@
 """
-CS50 Final Project: Spotify Status - Roman Garms
+Spotify Song Recommender - Roman Garms
 
 Prerequisites
 
@@ -10,6 +10,7 @@ Prerequisites
     export SPOTIPY_CLIENT_ID=client_id_here
     export SPOTIPY_CLIENT_SECRET=client_secret_here
     export SPOTIPY_REDIRECT_URI='http://127.0.0.1:5000' // must contain a port
+    export LOGIC_API_TOKEN=logic_api_token_here
 
     // set the redirect url to 'http://127.0.0.1:5000' for testing on your local machine. When hosting, you will need to change that to the address of the device you are hosting on.
     // SPOTIPY_REDIRECT_URI must be added to your [app settings](https://developer.spotify.com/dashboard/applications)
@@ -27,17 +28,25 @@ import spotipy
 import sys
 
 from logic.spotify import get_spotify, get_playlist
-from logic.logic_api import analyze_playlist_with_logic, make_playlist_from_text_with_logic
+from logic.logic_api import (
+    analyze_playlist_with_logic,
+    make_playlist_from_text_with_logic,
+)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(64)
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_FILE_DIR"] = "./.flask_session/"
-app.config['TRAP_HTTP_EXCEPTIONS']=True
+app.config["TRAP_HTTP_EXCEPTIONS"] = True
 Session(app)
-debug = True
 
-if debug:
+# Settings
+# Port for flask app
+PORT = 8100
+# set to True to load environment variables from .env file
+DEBUG = True
+
+if DEBUG:
     # Load environment variables from .env file
     from dotenv import load_dotenv
 
@@ -46,19 +55,23 @@ if debug:
 
 @app.route("/debug")
 def debug():
-    spotify = get_spotify()
-    playlists = spotify.current_user_playlists()
+    sp = get_spotify()
+    playlists = sp.current_user_playlists()
     # Debugging route to check session data
     return playlists
 
+
 @app.errorhandler(Exception)
 def http_error_handler(error):
+    """Handle HTTP errors and display a custom error page."""
+
     return render_template("error.html", error=error), 500
 
 
 @app.route("/")
 def index():
-    #print(os.getenv("SPOTIPY_CLIENT_ID"))
+    """Landing page of the app. Redirects to the login page if not authenticated, otherwise to the main page."""
+
     cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session)
     auth_manager = spotipy.oauth2.SpotifyOAuth(
         scope="playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-read",
@@ -82,6 +95,7 @@ def index():
 
 @app.route("/sign_out")
 def sign_out():
+    """Sign out the user by clearing the session and redirecting to the main page."""
     session.clear()
     session.pop("token_info", None)
     return redirect("/")
@@ -89,14 +103,15 @@ def sign_out():
 
 @app.route("/playlist_from_playlist")
 def playlist_analyzer():
+    """Generate a playlist from analyzing a selected playlist"""
 
-    spotify = get_spotify()
+    sp = get_spotify()
     # get user playlists
-    results = spotify.current_user_playlists()
+    results = sp.current_user_playlists()
 
-    username = spotify.me()["display_name"]
+    username = sp.me()["display_name"]
 
-    pfp = spotify.me()["images"][0]["url"] if spotify.me()["images"] else None
+    pfp = sp.me()["images"][0]["url"] if sp.me()["images"] else None
 
     # trim down the results to only the name and id of the playlist
     playlists = [{"name": item["name"], "id": item["id"]} for item in results["items"]]
@@ -136,13 +151,14 @@ def playlist_analyzer():
 
 @app.route("/playlist_from_text")
 def playlist_maker():
+    """Generate a playlist from a text description"""
 
-    spotify = get_spotify()
-    username = spotify.me()["display_name"]
+    sp = get_spotify()
+    username = sp.me()["display_name"]
 
     new_playlist = session.get("new_playlist")
 
-    pfp = spotify.me()["images"][0]["url"] if spotify.me()["images"] else None
+    pfp = sp.me()["images"][0]["url"] if sp.me()["images"] else None
 
     if new_playlist:
         # fetch playlist's name
@@ -154,7 +170,6 @@ def playlist_maker():
         new_playlist_name = "No new playlist created, generate one?"
         new_playlist_url = None
         new_playlist_description = "No playlist description available"
-
 
     return render_template(
         "playlist_from_text.html",
@@ -168,6 +183,9 @@ def playlist_maker():
 
 @app.route("/describe_playlist", methods=["POST"])
 def describe_playlist():
+    """POST request to save the playlist description"""
+    # This is called automatically whenever the user stops typing the playlist description
+
     data = request.get_json()
     description = data.get("description")
 
@@ -181,6 +199,8 @@ def describe_playlist():
 
 @app.route("/select_playlist", methods=["POST"])
 def select_playlist():
+    """From a Spotify playlist ID sent via POST, save the selected playlist ID in the session."""
+
     data = request.get_json()
     playlist_id = data["playlist_id"]
 
@@ -200,6 +220,7 @@ def generate_from_text():
     """
     Generate a playlist from a text description
     """
+    # call create_playlist with mode "text"
     create_playlist("text")
     return redirect("/playlist_from_text")
 
@@ -209,20 +230,22 @@ def generate_from_playlist():
     """
     Generate a playlist from a selected playlist
     """
+    # call create_playlist with mode "playlist"
     create_playlist("playlist")
     return redirect("/playlist_from_playlist")
 
 
 @app.route("/create_playlist", methods=["POST"])
 def create_playlist(mode="playlist"):
-    # data = request.get_json()
+    """Create a new playlist and call the appropriate logic function based on the mode. Modes are 'playlist' and 'text'."""
+
     playlist_name = "GEN: Work in Progress"
     playlist_description = "Being generated by the Logic API"
 
     # Create a new playlist
-    spotify = get_spotify()
-    user_id = spotify.me()["id"]
-    new_playlist = spotify.user_playlist_create(
+    sp = get_spotify()
+    user_id = sp.me()["id"]
+    new_playlist = sp.user_playlist_create(
         user_id, playlist_name, public=False, description=playlist_description
     )
 
@@ -252,4 +275,4 @@ if __name__ == "__main__":
     print(os.getenv("SPOTIPY_REDIRECT_URI"))
     from waitress import serve
 
-    serve(app, host="0.0.0.0", port=8100)
+    serve(app, host="0.0.0.0", port=PORT)

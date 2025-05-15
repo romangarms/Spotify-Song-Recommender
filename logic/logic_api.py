@@ -1,8 +1,17 @@
+"""
+This module contains functions to interact with the Logic API.
+It includes functions to create a playlist from a text description
+or from an existing playlist.
+"""
+
 from flask import session, redirect
 import requests
 import os
 from logic.spotify import get_playlist, add_recommendations_to_playlist
 
+# Set these to the Logic API endpoints for your specific documents. You can find the document templates in the /logic_documents folder.
+LOGIC_PLAYLIST_FROM_TEXT_DOC = "https://api.logic.inc/2024-03-01/documents/recommend-songs-from-playlist"
+LOGIC_PLAYLIST_FROM_PLAYLIST_DOC = "https://api.logic.inc/2024-03-01/documents/recommend-songs-from-playlist"
 
 def make_playlist_from_text_with_logic():
     """
@@ -25,7 +34,7 @@ def make_playlist_from_text_with_logic():
     }
 
     response = requests.post(
-        "https://api.logic.inc/2024-03-01/documents/recommend-songs-from-playlist/executions",
+        "{LOGIC_PLAYLIST_FROM_TEXT_DOC}/executions",
         headers=headers,
         json={"description": text_description},
     )
@@ -75,7 +84,7 @@ def analyze_playlist_with_logic():
     }
 
     response = requests.post(
-        "https://api.logic.inc/2024-03-01/documents/recommend-songs-from-playlist/executions",
+        "{LOGIC_PLAYLIST_FROM_PLAYLIST_DOC}/executions",
         headers=headers,
         json={"playlistJson": track_data_json},
     )
