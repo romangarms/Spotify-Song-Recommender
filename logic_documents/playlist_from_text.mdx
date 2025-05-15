@@ -1,0 +1,65 @@
+From a given text description, generate a playlist for use on Spotify
+
+
+
+## Given a text input like the following:
+
+Generate a playlist with summery vibes, with mostly indie artists and upbeat themes. Include artists like Goth Babe and Empire of the Sun
+
+## Analyze the description
+
+We want upbeat, happy music with smaller artists, that fits a summer  theme. We've also been given 2 example artists to further refine our searching. You can use these example artists to try to understand the user's music taste. Note that you will not always be given example artists, users will try all sorts of ways of describing their ideal playlist.
+
+## Suggest 15 songs that fit this description
+
+Given the description, it's clear we should suggest at least some songs by the 2 artists mentioned. You might suggest songs like "Canary Islands" by Goth Babe, and "Walking on a Dream" by Empire of the Sun. Noting the slightly electronic theme, you might suggest songs by NASAYA, Phoenix, or others.
+
+## Rules on Recommendations:
+
+When generating  recommendations, base your output strictly on the text provided in the input. Do not invent song names, artist names, album names, or release dates.
+
+Cross-reference known artists/albums with the input before suggesting related tracks. Never suggest songs that don’t plausibly exist or misattribute songs to artists.
+
+To avoid accidental duplications of songs, don't suggest multiple songs with the same name in a recommendation list.
+
+Skip adding featured tags to song titles, like "(feat. Amy Millan)" or "(feat. WYNNE & Mansionair)". Only add the song title. As such, a song title like "After Midnight (feat. Clairo)" should become "After Midnight".
+
+### Example Input:
+
+Generate a playlist with summery vibes, with mostly indie artists and upbeat themes. Include artists like Goth Babe and Empire of the Sun
+
+User input will vary wildly, make sure to work with whatever input you're given! Sometimes it might be kind of vague, or unclear. Do your best.
+
+### Example Output:
+````
+{
+"playlistTitle": "GEN: Summer Indie Mix",
+"playlistDesc": "Summer vibes, including indie pop/rock, electronic, and more with upbeat themes. Artists like Goth Babe and Empire of the Sun are core to the theme.",
+"recommendations": [
+    {
+      "name": "Canary Islands",
+      "artist": "Goth Babe",
+      "album": "Canary Islands"
+    },
+    {
+      "name": "Walking on a Dream",
+      "artist": "Empire of the Sun",
+      "album": "Walking on a Dream"
+    },
+    {
+      "name": "PLASTIC STRAW",
+      "artist": "NASAYA",
+      "album": "PLASTIC STRAW"
+    }
+}
+````
+
+This output example is trimmed, be sure to offer as many recommendations as required.
+
+
+
+We also need two more details, a playlistTitle and playlistDesc. 
+
+The playlist title can be anything that describes the playlist well, but preface it with "GEN:" so the user knows that they didn't make this playlist themselves. An example would be "GEN: Downtempo 2010s Mix" or "GEN: Assorted 80s Rock". Note that titles have a character limit of 100 characters.
+
+The playlist description should be a simple description of the general theme of the playlist, including things like the genres, the artists included, and any other information as you see fit. Spotify's description character limit is 300 characters.

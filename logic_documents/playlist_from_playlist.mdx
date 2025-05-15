@@ -1,0 +1,139 @@
+Finding new music is challenging. It can be difficult to find new music that matches your music taste. The main challenge to this is all song recommendation algorithms don't actually examine your music taste very closely.
+
+
+
+## Given a JSON input of songs in a playlist
+
+The structure of which is given here:
+
+````
+"tracks": [
+    {
+      "album": "Metaphysical",
+      "artist": "The Technicolors",
+      "name": "Neon Roses",
+      "release_date": "2017-07-27"
+    },
+    {
+      "album": "Franz Ferdinand",
+      "artist": "Franz Ferdinand",
+      "name": "Take Me Out",
+      "release_date": "2004-02-16"
+    },
+    {
+      "album": "Restless",
+      "artist": "Miami Horror",
+      "name": "Restless",
+      "release_date": "2019-06-28"
+    }
+]
+````
+
+
+Take note of the track name, and artist name(s). Album names can be useful too for suggesting other songs on an album that aren't already in the playlist. Lastly, take a note of album release data to determine the era of a song, as this can improve recommendation. All other info can be safely ignored.
+
+Take this input as a text field, where the user can send in the contents of the JSON input
+
+
+
+## Analyze music taste
+
+Does it skew electronic? Indie? Rock? More than likely, multiple genres? 
+
+Are the songs modern? Mostly 80s? 90s? Classical?
+
+Do the songs have complex lyrics, or more simple?
+
+
+
+## Suggest 15 new songs
+
+You can suggest any 15 songs that match the music taste displayed in the playlist. This can mean the same or similar genres, but make sure to suggest something that is not already in the list.
+
+You can suggest the same artist or album already in the playlist if it makes a good recommendation, but do not suggest the same song already in the JSON input
+
+
+
+## Rules on Recommendations:
+
+When generating analysis or recommendations, base your output strictly on the song, artist, and album data provided in the input. Do not invent song names, artist names, album names, or release dates.
+
+Cross-reference known artists/albums with the input before suggesting related tracks. Never suggest songs that don’t plausibly exist or misattribute songs to artists.
+
+To avoid accidental duplications of songs, don't suggest multiple songs with the same name in a recommendation list.
+
+Skip adding featured tags to song titles, like "(feat. Amy Millan)" or "(feat. WYNNE & Mansionair)". Only add the song title. As such, a song title like "After Midnight (feat. Clairo)" should become "After Midnight".
+
+### Example JSON input:
+````
+"tracks" [
+{
+      "album": "Metaphysical",
+      "artist": "The Technicolors",
+      "name": "Neon Roses",
+      "release_date": "2017-07-27"
+},
+{
+      "album": "Franz Ferdinand",
+      "artist": "Franz Ferdinand",
+      "name": "Take Me Out",
+      "release_date": "2004-02-16"
+},
+{
+      "album": "Restless",
+      "artist": "Miami Horror",
+      "name": "Restless",
+      "release_date": "2019-06-28"
+}
+]
+````
+
+This example input file is trimmed, there would likely be more songs on it.
+
+### Example Output
+
+These songs are all relatively modern (2004 or newer), all have reasonably complex lyrics. They skew a bit indie, with Franz Ferdinand likely being the most popular.
+
+You might recommend songs by the artist Local Natives, as the songs can be similar genre-wise to The Technicolors. You might recommend other early 2000s one-hit wonders like Franz Ferdinand sometimes is seen as. You might recommend other Miami Horror songs, like those off a more recent album
+
+Output is as follows:
+````
+{
+"playlistTitle": "GEN: 2010s Electronic and Indie",
+"playlistDesc": "Your taste blends modern indie pop/rock, synthpop, chillwave, and electronic, with a love for lush production, catchy melodies, and introspective or playful lyrics. You favor 2010s–2020s anthems with 80s/90s new wave vibes. Core artists include Tame Impala, ODESZA, Lorde, and more.",
+"recommendations": [
+    {
+      "name": "The Other Side of Paradise",
+      "artist": "Glass Animals",
+      "album": "How To Be A Human Being",
+      "explanation": "Glass Animals are already in your playlist but this track is not. It blends indie pop with psychedelic electronic elements and infectious hooks—perfect for your love of modern indie-electronic."
+    },
+    {
+      "name": "Oblivion",
+      "artist": "Grimes",
+      "album": "Visions",
+      "explanation": "Grimes' 'Oblivion' is a synthpop/chillwave classic with dreamy production and catchy melodies. It fits your taste for ethereal yet energetic indie-electronic music."
+    },
+    {
+      "name": "Peach",
+      "artist": "BROODS",
+      "album": "Don't Feed The Pop Monster",
+      "explanation": "BROODS appear in your playlist but this standout track is missing. 'Peach' is a euphoric indie-pop anthem with lush synths and uplifting vibes."
+    }
+}
+````
+
+This output example is trimmed, be sure to offer as many recommendations as required.
+
+
+
+We also need two more details, a playlistTitle and playlistDesc. 
+
+The playlist title can be anything that describes the playlist well, but preface it with "GEN:" so the user knows that they didn't make this playlist themselves. An example would be "GEN: Downtempo 2010s Mix" or "GEN: Assorted 80s Rock". Note that titles have a character limit of 100 characters.
+
+The playlist description should describe the user's music taste, including details about the songs they like, such as the eras or genres. Additionally, list a few core artists at the end. Spotify's description character limit is 300 characters.
+
+
+
+
+
