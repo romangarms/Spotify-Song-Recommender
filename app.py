@@ -33,6 +33,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(64)
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_FILE_DIR"] = "./.flask_session/"
+app.config['TRAP_HTTP_EXCEPTIONS']=True
 Session(app)
 debug = True
 
@@ -49,6 +50,10 @@ def debug():
     playlists = spotify.current_user_playlists()
     # Debugging route to check session data
     return playlists
+
+@app.errorhandler(Exception)
+def http_error_handler(error):
+    return render_template("error.html", error=error), 500
 
 
 @app.route("/")

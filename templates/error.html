@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% extends "base.html" %}
 
 {%block title %}
 <title>Error</title>
@@ -8,11 +8,14 @@
 <!--wooo nothing is playing rn-->
 <div id="outer">
     <div id="center">
-        <h1 class="not-playing">Error Encountered</h1>
-        <h2 class="text">{{error}}</h2>
+        <h1 style="color: white;" class="not-playing">Error Encountered</h1>
+        <h2 style="color: white;" class="text">{{error}}</h2>
 
-        <a onclick="reload()" id="reload-button" class="btn btn-default media-control-button"><i
+        <a style="color: white;" onclick="reload()" id="reload-button" class="btn btn-default media-control-button"><i
                 class="material-icons">refresh</i></a>
+
+        <a style="color: white;" href="/" id="home-button" class="btn btn-default media-control-button"><i
+                class="material-icons">home</i></a>
     </div>
 </div>
 
