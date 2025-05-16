@@ -42,9 +42,9 @@ Session(app)
 
 # Settings
 # Port for flask app
-PORT = 8100
+PORT = 8080
 # set to True to load environment variables from .env file
-DEBUG = True
+DEBUG = False
 
 if DEBUG:
     # Load environment variables from .env file
