@@ -272,7 +272,8 @@ if __name__ == "__main__":
         sys.exit("Missing Environment Variable: SPOTIPY_CLIENT_SECRET")
     if os.getenv("SPOTIPY_REDIRECT_URI") == None:
         sys.exit("Missing Environment Variable: SPOTIPY_REDIRECT_URI")
-    print(os.getenv("SPOTIPY_REDIRECT_URI"))
+    if os.getenv("LOGIC_API_TOKEN") == None:
+        sys.exit("Missing Environment Variable: LOGIC_API_TOKEN")
     from waitress import serve
 
     serve(app, host="0.0.0.0", port=PORT)
