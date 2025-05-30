@@ -34,7 +34,7 @@ def make_playlist_from_text_with_logic():
     }
 
     response = requests.post(
-        "{LOGIC_PLAYLIST_FROM_TEXT_DOC}/executions",
+        f"{LOGIC_PLAYLIST_FROM_TEXT_DOC}/executions",
         headers=headers,
         json={"description": text_description},
     )
@@ -84,7 +84,7 @@ def analyze_playlist_with_logic():
     }
 
     response = requests.post(
-        "{LOGIC_PLAYLIST_FROM_PLAYLIST_DOC}/executions",
+        f"{LOGIC_PLAYLIST_FROM_PLAYLIST_DOC}/executions",
         headers=headers,
         json={"playlistJson": track_data_json},
     )
