@@ -10,7 +10,7 @@ import os
 from logic.spotify import get_playlist, add_recommendations_to_playlist
 
 # Set these to the Logic API endpoints for your specific documents. You can find the document templates in the /logic_documents folder.
-LOGIC_PLAYLIST_FROM_TEXT_DOC = "https://api.logic.inc/2024-03-01/documents/recommend-songs-from-playlist"
+LOGIC_PLAYLIST_FROM_TEXT_DOC = "https://api.logic.inc/2024-03-01/documents/generate-spotify-playlist-from-text"
 LOGIC_PLAYLIST_FROM_PLAYLIST_DOC = "https://api.logic.inc/2024-03-01/documents/recommend-songs-from-playlist"
 
 def make_playlist_from_text_with_logic():
