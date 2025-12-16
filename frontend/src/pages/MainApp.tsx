@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { GenerationProvider } from '../context/GenerationContext';
 import { ThreeColumnLayout } from '../components/layout';
@@ -10,14 +10,26 @@ import { ProfileSkeleton, PlaylistListSkeleton, ResultSkeleton } from '../compon
 
 export function MainApp() {
   const navigate = useNavigate();
-  const { profile, isLoading } = useUser();
+  const [searchParams] = useSearchParams();
+  const { profile, isLoading, setUsername } = useUser();
+  const hasAttemptedLoad = useRef(false);
 
-  // Redirect to landing if no profile
+  // Load profile from URL param on mount
   useEffect(() => {
-    if (!isLoading && !profile) {
+    const userParam = searchParams.get('user');
+    if (userParam && !profile && !isLoading && !hasAttemptedLoad.current) {
+      hasAttemptedLoad.current = true;
+      setUsername(decodeURIComponent(userParam));
+    }
+  }, [searchParams, profile, isLoading, setUsername]);
+
+  // Redirect to landing if no profile and no user param
+  useEffect(() => {
+    const userParam = searchParams.get('user');
+    if (!isLoading && !profile && !userParam) {
       navigate('/');
     }
-  }, [isLoading, profile, navigate]);
+  }, [isLoading, profile, navigate, searchParams]);
 
   // Show loading state
   if (isLoading) {

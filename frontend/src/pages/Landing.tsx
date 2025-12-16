@@ -39,7 +39,7 @@ export function Landing() {
       ].slice(0, MAX_HISTORY);
       setRecentSearches(newHistory);
 
-      navigate('/app');
+      navigate(`/app?user=${encodeURIComponent(trimmedInput)}`);
     } catch (e) {
       // Error is already set by UserContext
     }
