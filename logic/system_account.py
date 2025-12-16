@@ -103,15 +103,16 @@ def refresh_access_token(refresh_token):
 
 def parse_user_id_from_url(profile_url):
     """
-    Extract user ID from a Spotify profile URL.
+    Extract user ID from a Spotify profile URL, URI, or plain username.
 
     Supports formats:
     - https://open.spotify.com/user/abc123
     - https://open.spotify.com/user/abc123?si=xxx
     - spotify:user:abc123
+    - abc123 (plain username)
 
     Args:
-        profile_url: Spotify profile URL or URI
+        profile_url: Spotify profile URL, URI, or plain username
 
     Returns:
         str: User ID or None if invalid
@@ -133,6 +134,11 @@ def parse_user_id_from_url(profile_url):
     )
     if url_match:
         return url_match.group(1)
+
+    # Handle plain username (alphanumeric, underscores, hyphens, periods)
+    # Spotify usernames can also contain periods
+    if re.match(r"^[a-zA-Z0-9_.-]+$", profile_url):
+        return profile_url
 
     return None
 

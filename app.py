@@ -189,6 +189,7 @@ def playlist_analyzer():
     # Fetch user's public playlists
     try:
         playlists = get_user_public_playlists(user_id)
+        playlists.sort(key=lambda p: p["name"].lower())
     except Exception as e:
         print(f"Error fetching playlists: {e}")
         playlists = []

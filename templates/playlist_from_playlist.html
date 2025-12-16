@@ -6,7 +6,23 @@
 
 {% block left %}
 <div>
-  <h2>Choose a playlist to analyze:</h2>
+  <h2>Paste any playlist URL:</h2>
+  <p class="section-note">Use any public playlist as inspiration (even from other users)</p>
+  <div class="url-input-container">
+    <input
+      type="text"
+      id="playlist-url-input"
+      class="url-input"
+      placeholder="https://open.spotify.com/playlist/..."
+    >
+    <div id="url-status" class="url-status"></div>
+  </div>
+
+  <div class="divider-or">
+    <span>OR</span>
+  </div>
+
+  <h2>Choose from your playlists:</h2>
   <p class="section-note">Select one of your public playlists below</p>
   <ul id="playlist-list">
     {% for playlist in playlists %}
@@ -19,22 +35,6 @@
   {% if not playlists %}
   <p class="empty-state">No public playlists found. Make sure your playlists are set to public.</p>
   {% endif %}
-
-  <div class="divider-or">
-    <span>OR</span>
-  </div>
-
-  <h2>Paste any playlist URL:</h2>
-  <p class="section-note">Use any public playlist as inspiration (even from other users)</p>
-  <div class="url-input-container">
-    <input
-      type="text"
-      id="playlist-url-input"
-      class="url-input"
-      placeholder="https://open.spotify.com/playlist/..."
-    >
-    <div id="url-status" class="url-status"></div>
-  </div>
 </div>
 
 <style>
