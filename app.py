@@ -1,7 +1,13 @@
 """
 Spotify Song Recommender - Roman Garms
 
-Prerequisites
+System Account Model:
+- Users enter their Spotify profile URL (no OAuth login required)
+- App fetches user's public playlists via system account
+- Generated playlists are created on the system account
+- Users receive a link to the generated playlist
+
+Prerequisites:
 
     Install prereqs from requirements.txt
 
@@ -9,25 +15,30 @@ Prerequisites
 
     export SPOTIPY_CLIENT_ID=client_id_here
     export SPOTIPY_CLIENT_SECRET=client_secret_here
-    export SPOTIPY_REDIRECT_URI='http://127.0.0.1:5000' // must contain a port
+    export SPOTIPY_REDIRECT_URI='http://127.0.0.1:5000/admin/callback'
     export LOGIC_API_TOKEN=logic_api_token_here
-
-    // set the redirect url to 'http://127.0.0.1:5000' for testing on your local machine. When hosting, you will need to change that to the address of the device you are hosting on.
-    // SPOTIPY_REDIRECT_URI must be added to your [app settings](https://developer.spotify.com/dashboard/applications)
-    // on Windows, use `SET` instead of `export`
+    export ADMIN_SECRET=your_secret_key_here
+    export SPOTIFY_SYSTEM_REFRESH_TOKEN=xxx  # Set via admin setup
 
 Run app.py
     python3 app.py OR python3 -m flask run
-    Alternatively, run using the launch.json under .vscode/ with the VSCode debugger
 """
 
 import os
+import time
+from functools import wraps
 from flask import Flask, session, request, redirect, render_template, jsonify
 from flask_session import Session
 import spotipy
-import sys
 
-from logic.spotify import get_spotify, get_playlist
+from logic.system_account import (
+    parse_user_id_from_url,
+    parse_playlist_id_from_url,
+    get_user_profile,
+    get_user_public_playlists,
+    get_playlist_tracks,
+    create_playlist_on_system_account,
+)
 from logic.logic_api import (
     analyze_playlist_with_logic,
     make_playlist_from_text_with_logic,
@@ -41,97 +52,167 @@ app.config["TRAP_HTTP_EXCEPTIONS"] = True
 Session(app)
 
 # Settings
-# Port for flask app
-PORT = 8080
-# set to True to load environment variables from .env file
-DEBUG = False
+PORT = 5000
+DEBUG = True
+
+# Rate limiting: track playlist generations per IP
+# Format: {ip: [(timestamp1), (timestamp2), ...]}
+rate_limit_store = {}
+RATE_LIMIT_MAX = 10  # Max generations per time window
+RATE_LIMIT_WINDOW = 3600  # Time window in seconds (1 hour)
 
 if DEBUG:
-    # Load environment variables from .env file
     from dotenv import load_dotenv
+    load_dotenv()
 
-    load_dotenv()  # take environment variables from .env.
+
+def require_profile(f):
+    """Decorator to require user profile in session before accessing route."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("user_profile"):
+            return redirect("/")
+        return f(*args, **kwargs)
+    return decorated_function
 
 
-@app.route("/debug")
-def debug():
-    sp = get_spotify()
-    playlists = sp.current_user_playlists()
-    # Debugging route to check session data
-    return playlists
+def check_rate_limit():
+    """
+    Check if the current IP has exceeded the rate limit.
+    Returns True if rate limited, False otherwise.
+    """
+    ip = request.remote_addr
+    current_time = time.time()
+
+    # Clean up old entries
+    if ip in rate_limit_store:
+        rate_limit_store[ip] = [
+            t for t in rate_limit_store[ip]
+            if current_time - t < RATE_LIMIT_WINDOW
+        ]
+
+    # Check limit
+    if ip in rate_limit_store and len(rate_limit_store[ip]) >= RATE_LIMIT_MAX:
+        return True
+
+    return False
+
+
+def record_generation():
+    """Record a playlist generation for rate limiting."""
+    ip = request.remote_addr
+    current_time = time.time()
+
+    if ip not in rate_limit_store:
+        rate_limit_store[ip] = []
+
+    rate_limit_store[ip].append(current_time)
 
 
 @app.errorhandler(Exception)
 def http_error_handler(error):
     """Handle HTTP errors and display a custom error page."""
-
+    print(f"Error: {error}")
     return render_template("error.html", error=error), 500
 
 
+# =============================================================================
+# Landing Page & Profile Setup
+# =============================================================================
+
 @app.route("/")
 def index():
-    """Landing page of the app. Redirects to the login page if not authenticated, otherwise to the main page."""
+    """
+    Landing page: Users enter their Spotify profile URL to begin.
+    If already have a profile in session, redirect to main page.
+    """
+    # If user already has a profile, go to main page
+    if session.get("user_profile"):
+        return redirect("/playlist_from_playlist")
 
-    cache_handler = spotipy.cache_handler.FlaskSessionCacheHandler(session)
-    auth_manager = spotipy.oauth2.SpotifyOAuth(
-        scope="playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-read",
-        cache_handler=cache_handler,
-        show_dialog=False,
-    )
+    error = request.args.get("error")
+    return render_template("landing.html", error=error)
 
-    if request.args.get("code"):
-        # Step 2. Being redirected from Spotify auth page
-        auth_manager.get_access_token(request.args.get("code"))
-        return redirect("/")
 
-    if not auth_manager.validate_token(cache_handler.get_cached_token()):
-        # Step 1. Display sign in link when no token
-        auth_url = auth_manager.get_authorize_url()
-        return render_template("login.html", auth_url=auth_url)
+@app.route("/set_profile", methods=["POST"])
+def set_profile():
+    """
+    Process the profile URL submitted on the landing page.
+    Fetches user's public profile and playlists.
+    """
+    profile_url = request.form.get("profile_url", "").strip()
 
-    # Step 3. Signed in, main page
-    return redirect("playlist_from_playlist")
+    # Parse user ID from URL
+    user_id = parse_user_id_from_url(profile_url)
+    if not user_id:
+        return redirect("/?error=invalid_url")
+
+    try:
+        # Fetch user profile using system account
+        profile = get_user_profile(user_id)
+
+        # Store in session
+        session["user_profile"] = profile
+        session["user_id"] = user_id
+
+        return redirect("/playlist_from_playlist")
+
+    except ValueError as e:
+        return redirect(f"/?error=user_not_found")
+    except Exception as e:
+        print(f"Error fetching profile: {e}")
+        return redirect(f"/?error=api_error")
 
 
 @app.route("/sign_out")
 def sign_out():
-    """Sign out the user by clearing the session and redirecting to the main page."""
+    """Clear session and return to landing page."""
     session.clear()
-    session.pop("token_info", None)
     return redirect("/")
 
 
+# =============================================================================
+# Playlist from Playlist
+# =============================================================================
+
 @app.route("/playlist_from_playlist")
+@require_profile
 def playlist_analyzer():
-    """Generate a playlist from analyzing a selected playlist"""
+    """Generate a playlist from analyzing a selected playlist."""
+    profile = session.get("user_profile")
+    user_id = session.get("user_id")
 
-    sp = get_spotify()
-    # get user playlists
-    results = sp.current_user_playlists()
+    # Get profile picture
+    pfp = profile["images"][0]["url"] if profile.get("images") else None
+    username = profile.get("display_name", user_id)
 
-    username = sp.me()["display_name"]
+    # Fetch user's public playlists
+    try:
+        playlists = get_user_public_playlists(user_id)
+    except Exception as e:
+        print(f"Error fetching playlists: {e}")
+        playlists = []
 
-    pfp = sp.me()["images"][0]["url"] if sp.me()["images"] else None
-
-    # trim down the results to only the name and id of the playlist
-    playlists = [{"name": item["name"], "id": item["id"]} for item in results["items"]]
-
-    # ✅ Add Liked Songs as a special "playlist"
-    playlists.insert(0, {"name": "Liked Songs ❤️", "id": "liked_songs"})
-
-    playlist = get_playlist()
-    new_playlist = session.get("new_playlist")
-
+    # Get selected playlist name
+    selected_playlist = session.get("selected_playlist")
     playlist_name = None
-    if playlist:
-        # fetch playlist's name
-        playlist_name = playlist["name"]
+    if selected_playlist:
+        # Find the name from our playlists list
+        for p in playlists:
+            if p["id"] == selected_playlist:
+                playlist_name = p["name"]
+                break
 
+    # Check for external playlist URL selection
+    if session.get("external_playlist_name"):
+        playlist_name = session.get("external_playlist_name")
+
+    # Get generated playlist info
+    new_playlist = session.get("new_playlist")
     if new_playlist:
-        # fetch playlist's name
-        new_playlist_name = session.get("newPlaylistTitle")
+        new_playlist_name = session.get("newPlaylistTitle", "Generated Playlist")
         new_playlist_url = f"https://open.spotify.com/playlist/{new_playlist}"
-        new_playlist_description = session.get("newPlaylistDescription")
+        new_playlist_description = session.get("newPlaylistDescription", "")
     else:
         new_playlist_name = "No new playlist created, generate one?"
         new_playlist_url = None
@@ -149,23 +230,115 @@ def playlist_analyzer():
     )
 
 
-@app.route("/playlist_from_text")
-def playlist_maker():
-    """Generate a playlist from a text description"""
+@app.route("/select_playlist", methods=["POST"])
+@require_profile
+def select_playlist():
+    """Save the selected playlist ID in the session."""
+    data = request.get_json()
+    playlist_id = data.get("playlist_id")
 
-    sp = get_spotify()
-    username = sp.me()["display_name"]
+    if not playlist_id:
+        return jsonify({"status": "error", "message": "No playlist ID provided"}), 400
+
+    # Clear any external playlist URL selection
+    session.pop("external_playlist_url", None)
+    session.pop("external_playlist_name", None)
+
+    session["selected_playlist"] = playlist_id
+    print(f"User selected playlist ID: {playlist_id}")
+
+    return jsonify({"status": "ok", "selected": playlist_id})
+
+
+@app.route("/set_playlist_url", methods=["POST"])
+@require_profile
+def set_playlist_url():
+    """Set a playlist URL as the source playlist."""
+    data = request.get_json()
+    playlist_url = data.get("playlist_url", "").strip()
+
+    if not playlist_url:
+        # Clear the external playlist selection
+        session.pop("external_playlist_url", None)
+        session.pop("external_playlist_name", None)
+        session.pop("selected_playlist", None)
+        return jsonify({"status": "ok", "cleared": True})
+
+    # Parse playlist ID from URL
+    playlist_id = parse_playlist_id_from_url(playlist_url)
+    if not playlist_id:
+        return jsonify({
+            "status": "error",
+            "message": "Invalid playlist URL. Please use a Spotify playlist link."
+        }), 400
+
+    # Verify playlist is accessible
+    try:
+        playlist = get_playlist_tracks(playlist_id)
+        playlist_name = playlist.get("name", "External Playlist")
+
+        # Store both the URL and the parsed ID
+        session["external_playlist_url"] = playlist_url
+        session["external_playlist_name"] = playlist_name
+        session["selected_playlist"] = playlist_id
+
+        return jsonify({
+            "status": "ok",
+            "playlist_id": playlist_id,
+            "playlist_name": playlist_name
+        })
+
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception as e:
+        print(f"Error fetching playlist: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Couldn't access this playlist. Make sure it's public."
+        }), 400
+
+
+@app.route("/generate-from-playlist", methods=["POST"])
+@require_profile
+def generate_from_playlist():
+    """Generate a playlist from a selected playlist."""
+    # Check rate limit
+    if check_rate_limit():
+        return render_template(
+            "error.html",
+            error="Rate limit exceeded. Please try again later."
+        ), 429
+
+    selected_playlist = session.get("selected_playlist")
+    if not selected_playlist:
+        return redirect("/playlist_from_playlist")
+
+    # Create playlist and generate
+    create_playlist("playlist")
+    record_generation()
+
+    return redirect("/playlist_from_playlist")
+
+
+# =============================================================================
+# Playlist from Text
+# =============================================================================
+
+@app.route("/playlist_from_text")
+@require_profile
+def playlist_maker():
+    """Generate a playlist from a text description."""
+    profile = session.get("user_profile")
+    user_id = session.get("user_id")
+
+    pfp = profile["images"][0]["url"] if profile.get("images") else None
+    username = profile.get("display_name", user_id)
 
     new_playlist = session.get("new_playlist")
-
-    pfp = sp.me()["images"][0]["url"] if sp.me()["images"] else None
-
     if new_playlist:
-        # fetch playlist's name
-        new_playlist_name = session.get("newPlaylistTitle")
+        new_playlist_name = session.get("newPlaylistTitle", "Generated Playlist")
         new_playlist_url = f"https://open.spotify.com/playlist/{new_playlist}"
-        new_playlist_description = session.get("newPlaylistDescription")
-
+        new_playlist_description = session.get("newPlaylistDescription", "")
     else:
         new_playlist_name = "No new playlist created, generate one?"
         new_playlist_url = None
@@ -182,98 +355,153 @@ def playlist_maker():
 
 
 @app.route("/describe_playlist", methods=["POST"])
+@require_profile
 def describe_playlist():
-    """POST request to save the playlist description"""
-    # This is called automatically whenever the user stops typing the playlist description
-
+    """Save the playlist description from text input."""
     data = request.get_json()
     description = data.get("description")
 
-    session["playlist_description"] = description
-
     if description:
-        session["playlist_description"] = description  # Save it per user
+        session["playlist_description"] = description
         return jsonify({"status": "ok", "saved": description})
+
     return jsonify({"status": "error", "message": "No description provided"}), 400
 
 
-@app.route("/select_playlist", methods=["POST"])
-def select_playlist():
-    """From a Spotify playlist ID sent via POST, save the selected playlist ID in the session."""
-
-    data = request.get_json()
-    playlist_id = data["playlist_id"]
-
-    print(f"Selected playlist ID: {playlist_id}")
-
-    # Store in the session (per-user, per-browser)
-    session["selected_playlist"] = playlist_id
-
-    # You could now analyze this playlist or save it to session, etc.
-    print(f"User selected playlist ID: {playlist_id}")
-
-    return jsonify({"status": "ok", "selected": playlist_id})
-
-
 @app.route("/generate-from-text", methods=["POST"])
+@require_profile
 def generate_from_text():
-    """
-    Generate a playlist from a text description
-    """
-    # call create_playlist with mode "text"
+    """Generate a playlist from a text description."""
+    # Check rate limit
+    if check_rate_limit():
+        return render_template(
+            "error.html",
+            error="Rate limit exceeded. Please try again later."
+        ), 429
+
+    description = session.get("playlist_description")
+    if not description:
+        return redirect("/playlist_from_text")
+
     create_playlist("text")
+    record_generation()
+
     return redirect("/playlist_from_text")
 
 
-@app.route("/generate-from-playlist", methods=["POST"])
-def generate_from_playlist():
-    """
-    Generate a playlist from a selected playlist
-    """
-    # call create_playlist with mode "playlist"
-    create_playlist("playlist")
-    return redirect("/playlist_from_playlist")
+# =============================================================================
+# Playlist Creation
+# =============================================================================
 
-
-@app.route("/create_playlist", methods=["POST"])
 def create_playlist(mode="playlist"):
-    """Create a new playlist and call the appropriate logic function based on the mode. Modes are 'playlist' and 'text'."""
+    """
+    Create a new playlist on the system account and populate it.
 
+    Args:
+        mode: "playlist" to analyze existing playlist, "text" for text-based generation
+    """
     playlist_name = "GEN: Work in Progress"
     playlist_description = "Being generated by the Logic API"
 
-    # Create a new playlist
-    sp = get_spotify()
-    user_id = sp.me()["id"]
-    new_playlist = sp.user_playlist_create(
-        user_id, playlist_name, public=False, description=playlist_description
+    # Create playlist on system account
+    new_playlist_id = create_playlist_on_system_account(
+        playlist_name,
+        playlist_description
     )
 
-    session["new_playlist"] = new_playlist["id"]
+    session["new_playlist"] = new_playlist_id
 
     if mode == "playlist":
-        # go hit the logic API and generate the playlist
         analyze_playlist_with_logic()
     elif mode == "text":
-        # go hit the logic API and generate the playlist
         make_playlist_from_text_with_logic()
 
-    return redirect("/playlist_from_playlist")
+    return new_playlist_id
 
 
-"""
-Following lines allow application to be run more conveniently with
-`python3 app.py` (Make sure you're using python3)
-"""
+# =============================================================================
+# Admin Routes for System Account Setup
+# =============================================================================
+
+@app.route("/admin/spotify-setup")
+def admin_spotify_setup():
+    """
+    Admin route to initiate OAuth flow for system account.
+    Requires admin secret key in query params.
+    """
+    admin_secret = os.getenv("ADMIN_SECRET")
+    provided_key = request.args.get("key")
+
+    if not admin_secret:
+        return "ADMIN_SECRET environment variable not set", 500
+
+    if not provided_key or provided_key != admin_secret:
+        return "Unauthorized", 401
+
+    # Create OAuth manager for system account setup
+    auth_manager = spotipy.oauth2.SpotifyOAuth(
+        client_id=os.getenv("SPOTIPY_CLIENT_ID"),
+        client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
+        redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
+        scope="playlist-modify-public playlist-modify-private user-read-private",
+        show_dialog=True,
+    )
+
+    auth_url = auth_manager.get_authorize_url()
+    return redirect(auth_url)
+
+
+@app.route("/admin/callback")
+def admin_callback():
+    """
+    OAuth callback for system account setup.
+    Displays the refresh token for the admin to copy.
+    """
+    code = request.args.get("code")
+    if not code:
+        return "No authorization code received", 400
+
+    # Exchange code for tokens
+    auth_manager = spotipy.oauth2.SpotifyOAuth(
+        client_id=os.getenv("SPOTIPY_CLIENT_ID"),
+        client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
+        redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
+        scope="playlist-modify-public playlist-modify-private user-read-private",
+    )
+
+    try:
+        token_info = auth_manager.get_access_token(code)
+        refresh_token = token_info.get("refresh_token")
+
+        # Display the refresh token
+        return render_template("admin_token.html", refresh_token=refresh_token)
+
+    except Exception as e:
+        return f"Error getting token: {e}", 500
+
+
+# =============================================================================
+# Main
+# =============================================================================
+
 if __name__ == "__main__":
-    if os.getenv("SPOTIPY_CLIENT_ID") == None:
-        sys.exit("Missing Environment Variable: SPOTIPY_CLIENT_ID")
-    if os.getenv("SPOTIPY_CLIENT_SECRET") == None:
-        sys.exit("Missing Environment Variable: SPOTIPY_CLIENT_SECRET")
-    if os.getenv("SPOTIPY_REDIRECT_URI") == None:
-        sys.exit("Missing Environment Variable: SPOTIPY_REDIRECT_URI")
-    if os.getenv("LOGIC_API_TOKEN") == None:
-        sys.exit("Missing Environment Variable: LOGIC_API_TOKEN")
-    from waitress import serve
+    required_vars = [
+        "SPOTIPY_CLIENT_ID",
+        "SPOTIPY_CLIENT_SECRET",
+        "SPOTIPY_REDIRECT_URI",
+        "LOGIC_API_TOKEN",
+    ]
 
+    for var in required_vars:
+        if not os.getenv(var):
+            import sys
+            sys.exit(f"Missing Environment Variable: {var}")
+
+    # Check for system refresh token (warn but don't exit)
+    if not os.getenv("SPOTIFY_SYSTEM_REFRESH_TOKEN"):
+        print("WARNING: SPOTIFY_SYSTEM_REFRESH_TOKEN not set.")
+        print("Visit /admin/spotify-setup?key=YOUR_ADMIN_SECRET to configure.")
+
+    from waitress import serve
+    print(f"Running on http://127.0.0.1:{PORT}")
     serve(app, host="0.0.0.0", port=PORT)
