@@ -26,6 +26,16 @@ def admin_spotify_setup():
     admin_secret = os.getenv("ADMIN_SECRET")
     provided_key = request.args.get("key")
 
+    # Debug logging
+    print(f"[Admin] ADMIN_SECRET set: {bool(admin_secret)}")
+    if admin_secret:
+        print(f"[Admin] ADMIN_SECRET length: {len(admin_secret)}, starts with: {admin_secret[:4]}...")
+    print(f"[Admin] Provided key: {bool(provided_key)}")
+    if provided_key:
+        print(f"[Admin] Provided key length: {len(provided_key)}, starts with: {provided_key[:4]}...")
+    if admin_secret and provided_key:
+        print(f"[Admin] Keys match: {admin_secret == provided_key}")
+
     if not admin_secret:
         return jsonify({
             "error": "config_error",

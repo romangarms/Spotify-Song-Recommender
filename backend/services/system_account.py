@@ -49,9 +49,11 @@ def get_system_spotify():
         # Check if we have a valid cached token
         if _token_cache["access_token"] and _token_cache["expires_at"]:
             if datetime.now() < _token_cache["expires_at"]:
+                print("[SystemAccount] Using cached access token")
                 return spotipy.Spotify(auth=_token_cache["access_token"])
 
         # Get a new access token using the refresh token
+        print("[SystemAccount] Refreshing access token...")
         access_token = refresh_access_token(refresh_token)
 
     return spotipy.Spotify(auth=access_token)
@@ -73,10 +75,21 @@ def refresh_access_token(refresh_token):
     client_id = os.getenv("SPOTIPY_CLIENT_ID")
     client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
 
+    # Debug logging
+    print(f"[TokenRefresh] Client ID set: {bool(client_id)}")
+    if client_id:
+        print(f"[TokenRefresh] Client ID length: {len(client_id)}, starts with: {client_id[:8]}...")
+    print(f"[TokenRefresh] Client Secret set: {bool(client_secret)}")
+    if client_secret:
+        print(f"[TokenRefresh] Client Secret length: {len(client_secret)}")
+    print(f"[TokenRefresh] Refresh token length: {len(refresh_token)}, starts with: {refresh_token[:10]}...")
+
     # Create authorization header
     auth_header = base64.b64encode(
         f"{client_id}:{client_secret}".encode()
     ).decode()
+
+    print(f"[TokenRefresh] Making request to Spotify token endpoint...")
 
     response = requests.post(
         "https://accounts.spotify.com/api/token",
@@ -90,12 +103,16 @@ def refresh_access_token(refresh_token):
         },
     )
 
+    print(f"[TokenRefresh] Response status: {response.status_code}")
+
     if response.status_code != 200:
+        print(f"[TokenRefresh] Error response: {response.text}")
         raise Exception(f"Failed to refresh token: {response.text}")
 
     data = response.json()
     access_token = data["access_token"]
     expires_in = data.get("expires_in", 3600)
+    print(f"[TokenRefresh] Success! Token expires in {expires_in} seconds")
 
     # Cache the token with expiry time (with 60 second buffer)
     _token_cache["access_token"] = access_token
