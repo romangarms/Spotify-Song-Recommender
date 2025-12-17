@@ -15,7 +15,7 @@ export function ResultCard() {
         </h3>
         <p className="text-spotify-text max-w-xs">
           Select a playlist or describe your ideal playlist, then click Generate
-          to create a new playlist powered by AI.
+          to create a new playlist powered by the Logic API.
         </p>
       </div>
     );

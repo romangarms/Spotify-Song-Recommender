@@ -1,7 +1,7 @@
 {
   "name": "spotify-song-recommender",
   "version": "1.0.0",
-  "description": "Get personalized playlist recommendations powered by AI",
+  "description": "Get personalized playlist recommendations powered by the Logic API",
   "scripts": {
     "dev": "npm run build:frontend && concurrently -n backend,frontend -c blue,green \"npm run dev:backend\" \"npm run watch:frontend\"",
     "dev:backend": "cd backend && ./venv/bin/python app.py",

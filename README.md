@@ -1,6 +1,6 @@
 # Spotify Song Recommender
 
-Get personalized playlist recommendations powered by AI. This app uses [Logic.inc](https://logic.inc) to analyze your music taste and generate new playlists.
+Get personalized playlist recommendations powered by the Logic API. This app uses [Logic.inc](https://logic.inc) to analyze your music taste and generate new playlists.
 
 ## Features
 
