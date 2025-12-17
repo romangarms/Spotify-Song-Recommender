@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -7,6 +7,18 @@ import { Button, Input } from '../components/ui';
 
 const MAX_HISTORY = 5;
 const HISTORY_KEY = 'spotify_profile_history';
+
+// Open Spotify in a popup window positioned on the right half of the screen
+function openSpotifyHelpPopup(): Window | null {
+  const width = Math.floor(window.screen.availWidth / 2);
+  const height = window.screen.availHeight;
+  const left = Math.floor(window.screen.availWidth / 2);
+  return window.open(
+    'https://open.spotify.com',
+    'spotify',
+    `width=${width},height=${height},left=${left},top=0`
+  );
+}
 
 // Extract username from Spotify URL
 function extractUsernameFromUrl(input: string): string | null {
@@ -22,7 +34,8 @@ export function Landing() {
   const { setUsername, isLoading, error: apiError } = useUser();
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [showSpotify, setShowSpotify] = useState(false);
+  const [helpMode, setHelpMode] = useState(false);
+  const popupRef = useRef<Window | null>(null);
   const [recentSearches, setRecentSearches] = useLocalStorage<string[]>(
     HISTORY_KEY,
     []
@@ -31,6 +44,38 @@ export function Landing() {
   // Check if input looks like a URL and extract username
   const extractedUsername = extractUsernameFromUrl(input);
   const isUrlInput = input.includes('open.spotify.com');
+
+  // Try to read clipboard and auto-fill if it contains a Spotify URL
+  const checkClipboardForSpotifyUrl = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const username = extractUsernameFromUrl(text);
+      if (username && !input) {
+        setInput(text);
+        // Auto-submit after a short delay
+        setTimeout(() => {
+          const form = document.querySelector('form');
+          if (form) form.requestSubmit();
+        }, 600);
+      }
+    } catch {
+      // Clipboard access denied or not available - silently ignore
+    }
+  }, [input]);
+
+  // Auto-check clipboard when page becomes visible (user switches back from Spotify)
+  useEffect(() => {
+    if (!helpMode) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkClipboardForSpotifyUrl();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [helpMode, checkClipboardForSpotifyUrl]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -56,6 +101,11 @@ export function Landing() {
       ].slice(0, MAX_HISTORY);
       setRecentSearches(newHistory);
 
+      // Close the Spotify popup if open
+      if (popupRef.current && !popupRef.current.closed) {
+        popupRef.current.close();
+      }
+
       navigate(`/app?user=${encodeURIComponent(usernameToUse)}`);
     } catch (e) {
       // Error is already set by UserContext
@@ -66,8 +116,137 @@ export function Landing() {
     setInput(search);
   };
 
+  const enterHelpMode = () => {
+    setHelpMode(true);
+    popupRef.current = openSpotifyHelpPopup();
+  };
+
   const displayError = error || apiError;
 
+  // Help Mode: Full-page split layout with instructions on left
+  if (helpMode) {
+    return (
+      <div className="min-h-screen flex flex-col p-8 w-1/2">
+        <button
+          type="button"
+          onClick={() => setHelpMode(false)}
+          className="text-spotify-text hover:text-white mb-6 self-start flex items-center gap-2"
+        >
+          ← Back
+        </button>
+
+        <div className="flex-1 flex flex-col justify-center max-w-lg">
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Find Your Username
+          </h1>
+          <p className="text-spotify-text mb-8">
+            Follow these steps in the Spotify window on the right:
+          </p>
+
+          <ol className="space-y-6 mb-10">
+            <li className="flex gap-4">
+              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
+                1
+              </span>
+              <div>
+                <p className="text-white font-medium">Log in to Spotify</p>
+                <p className="text-spotify-text text-sm">Sign in if you haven't already</p>
+              </div>
+            </li>
+            <li className="flex gap-4">
+              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
+                2
+              </span>
+              <div>
+                <p className="text-white font-medium">Click your profile picture</p>
+                <p className="text-spotify-text text-sm">Located in the top-right corner</p>
+              </div>
+            </li>
+            <li className="flex gap-4">
+              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
+                3
+              </span>
+              <div>
+                <p className="text-white font-medium">Click "Profile"</p>
+                <p className="text-spotify-text text-sm">Opens your profile page</p>
+              </div>
+            </li>
+            <li className="flex gap-4">
+              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
+                4
+              </span>
+              <div>
+                <p className="text-white font-medium">Click "..." then "Copy link to profile"</p>
+                <p className="text-spotify-text text-sm">The three-dot menu near your name</p>
+              </div>
+            </li>
+            <li className="flex gap-4">
+              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
+                5
+              </span>
+              <div>
+                <p className="text-white font-medium">Paste the link below</p>
+                <p className="text-spotify-text text-sm">We'll extract your username automatically</p>
+              </div>
+            </li>
+          </ol>
+
+          {/* Error Message */}
+          {displayError && (
+            <div className="bg-red-500/20 border border-red-500 text-red-400 px-5 py-3 rounded-lg mb-4">
+              {displayError}
+            </div>
+          )}
+
+          {/* Input Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <div className="flex gap-2 items-stretch">
+                <Input
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Paste your profile link here"
+                  className="text-lg flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={checkClipboardForSpotifyUrl}
+                  className="px-4 bg-spotify-light-gray text-white border border-gray-600 hover:border-spotify-green rounded-lg transition-colors"
+                  title="Paste from clipboard"
+                >
+                  📋 Paste
+                </button>
+              </div>
+              {isUrlInput && extractedUsername && (
+                <div className="mt-2 text-sm text-spotify-green">
+                  Found username: <span className="font-medium">{extractedUsername}</span>
+                </div>
+              )}
+              {isUrlInput && !extractedUsername && (
+                <div className="mt-2 text-sm text-yellow-500">
+                  Couldn't extract username from URL. Make sure it's a profile link.
+                </div>
+              )}
+            </div>
+            <Button
+              type="submit"
+              size="lg"
+              isLoading={isLoading}
+              className="w-full"
+              disabled={!input.trim()}
+            >
+              Get Started
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Normal landing page
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-5">
       <div className="max-w-[600px] w-full text-center">
@@ -89,8 +268,25 @@ export function Landing() {
           </div>
         )}
 
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 mb-4">
+        {/* Primary CTA - Find Username */}
+        <Button
+          type="button"
+          size="lg"
+          onClick={enterHelpMode}
+          className="w-full mb-6"
+        >
+          Find My Username
+        </Button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1 h-px bg-gray-700" />
+          <span className="text-gray-500 text-sm">or enter it directly</span>
+          <div className="flex-1 h-px bg-gray-700" />
+        </div>
+
+        {/* Secondary - Manual Input */}
+        <form onSubmit={handleSubmit} className="space-y-4 mb-8">
           <div className="relative">
             <Input
               value={input}
@@ -98,9 +294,8 @@ export function Landing() {
                 setInput(e.target.value);
                 setError(null);
               }}
-              placeholder="Spotify username"
+              placeholder="Spotify username or profile URL"
               className="text-center text-lg"
-              autoFocus
             />
             {/* Show extracted username when URL is pasted */}
             {isUrlInput && extractedUsername && (
@@ -117,59 +312,13 @@ export function Landing() {
           <Button
             type="submit"
             size="lg"
+            variant="secondary"
             isLoading={isLoading}
             className="w-full"
           >
             Get Started
           </Button>
         </form>
-
-        {/* Help Section */}
-        <div className="mb-8 bg-spotify-gray rounded-xl p-5 text-left">
-          <p className="text-white font-medium mb-3">Don't know your username?</p>
-          <ol className="space-y-2 text-spotify-text text-sm">
-            <li className="flex gap-3">
-              <span className="text-spotify-green font-medium">1.</span>
-              <span>
-                <button
-                  type="button"
-                  onClick={() => setShowSpotify(!showSpotify)}
-                  className="text-spotify-green hover:underline"
-                >
-                  {showSpotify ? 'Hide Spotify' : 'Open Spotify'}
-                </button>
-                {' '}and log in
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <span className="text-spotify-green font-medium">2.</span>
-              <span>Click your profile icon (top right)</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="text-spotify-green font-medium">3.</span>
-              <span>Click "Profile"</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="text-spotify-green font-medium">4.</span>
-              <span>Click "..." → "Copy link to profile"</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="text-spotify-green font-medium">5.</span>
-              <span>Paste the link above</span>
-            </li>
-          </ol>
-
-          {showSpotify && (
-            <div className="mt-4 rounded-lg overflow-hidden border border-gray-700">
-              <iframe
-                src="https://open.spotify.com"
-                title="Spotify"
-                className="w-full h-[500px]"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-              />
-            </div>
-          )}
-        </div>
 
         {/* Recent Searches */}
         {recentSearches.length > 0 && (
