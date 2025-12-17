@@ -6,9 +6,9 @@ interface TrackListProps {
 
 export function TrackList({ tracks }: TrackListProps) {
   return (
-    <div className="space-y-2">
-      <h4 className="text-white font-semibold">Tracks ({tracks.length})</h4>
-      <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
+    <div className="h-full flex flex-col min-h-0">
+      <h4 className="text-white font-semibold flex-shrink-0 mb-2">Tracks ({tracks.length})</h4>
+      <div className="space-y-1 flex-1 overflow-y-auto pr-2 min-h-0">
         {tracks.map((track, index) => (
           <div
             key={track.id}
