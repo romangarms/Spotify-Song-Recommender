@@ -1,0 +1,20 @@
+# Flask and extensions
+Flask>=3.0.0
+Flask-Session>=0.6.0
+Flask-CORS>=4.0.0
+
+# WSGI servers
+gunicorn==23.0.0
+waitress==3.0.1
+
+# Spotify API
+spotipy==2.25.2
+
+# HTTP client
+requests>=2.28.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Dependencies - managed by Flask
+# click, itsdangerous, Jinja2, MarkupSafe, Werkzeug installed with Flask

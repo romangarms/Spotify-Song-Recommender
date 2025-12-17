@@ -167,3 +167,6 @@ cython_debug/
 
 #Fly.io config
 fly.toml
+
+# Node
+node_modules/
