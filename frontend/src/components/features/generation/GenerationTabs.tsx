@@ -28,7 +28,7 @@ export function GenerationTabs() {
     activeTab === 'playlist' ? !!selectedPlaylistId : !!textDescription.trim();
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full min-h-0">
       <Tabs
         tabs={[
           { id: 'playlist', label: 'From Playlist' },
@@ -38,11 +38,11 @@ export function GenerationTabs() {
         onChange={setActiveTab}
       />
 
-      <div className="min-h-[400px]">
+      <div className="flex-1 min-h-0 overflow-y-auto mt-4">
         {activeTab === 'playlist' ? (
-          <div className="space-y-4">
+          <div className="flex flex-col h-full">
             {/* URL Input Section */}
-            <div>
+            <div className="flex-shrink-0">
               <h3 className="text-white font-semibold mb-2">
                 Paste any playlist URL:
               </h3>
@@ -53,18 +53,20 @@ export function GenerationTabs() {
             </div>
 
             {/* Divider */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 my-4 flex-shrink-0">
               <div className="flex-1 h-px bg-gray-700" />
               <span className="text-spotify-text text-sm">OR</span>
               <div className="flex-1 h-px bg-gray-700" />
             </div>
 
             {/* Playlist List */}
-            <div>
-              <h3 className="text-white font-semibold mb-2">
+            <div className="flex-1 min-h-0 flex flex-col">
+              <h3 className="text-white font-semibold mb-2 flex-shrink-0">
                 Choose from your playlists:
               </h3>
-              <PlaylistList />
+              <div className="flex-1 min-h-0">
+                <PlaylistList />
+              </div>
             </div>
           </div>
         ) : (
@@ -77,7 +79,7 @@ export function GenerationTabs() {
         onClick={handleGenerate}
         disabled={!canGenerate || isLoading}
         isLoading={isLoading}
-        className="w-full"
+        className="w-full mt-4 flex-shrink-0"
         size="lg"
       >
         Generate New Playlist

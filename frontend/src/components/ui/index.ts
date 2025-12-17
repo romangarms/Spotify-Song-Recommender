@@ -3,3 +3,6 @@ export { Card } from './Card';
 export { Input } from './Input';
 export { Tabs } from './Tabs';
 export { Skeleton, ProfileSkeleton, PlaylistListSkeleton, ResultSkeleton } from './Skeleton';
+export { GuideStep } from './GuideStep';
+export { GuideInputRow } from './GuideInputRow';
+export { SpotifyGuideLayout } from './SpotifyGuideLayout';

@@ -8,7 +8,7 @@ export function ResultCard() {
   // Idle state
   if (state.status === 'idle') {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="flex flex-col items-center justify-center h-full text-center">
         <div className="text-6xl mb-4">🎵</div>
         <h3 className="text-xl font-semibold text-white mb-2">
           Ready to Generate
@@ -24,7 +24,7 @@ export function ResultCard() {
   // Loading state
   if (state.status === 'loading') {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="flex flex-col items-center justify-center h-full text-center">
         <div className="w-16 h-16 border-4 border-spotify-green border-t-transparent rounded-full animate-spin mb-4" />
         <h3 className="text-xl font-semibold text-white mb-2">
           Generating Your Playlist...
@@ -40,7 +40,7 @@ export function ResultCard() {
   // Error state
   if (state.status === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="flex flex-col items-center justify-center h-full text-center">
         <div className="text-6xl mb-4">😕</div>
         <h3 className="text-xl font-semibold text-white mb-2">
           Something Went Wrong
@@ -57,17 +57,19 @@ export function ResultCard() {
   const result = state.result!;
 
   return (
-    <div className="space-y-4">
-      <div>
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-shrink-0">
         <h3 className="text-xl font-bold text-white mb-2">{result.title}</h3>
         <p className="text-spotify-text text-sm">{result.description}</p>
       </div>
 
       {/* Full Track List */}
-      <TrackList tracks={result.tracks} />
+      <div className="flex-1 min-h-0 overflow-y-auto my-4">
+        <TrackList tracks={result.tracks} />
+      </div>
 
       {/* Actions */}
-      <div className="space-y-2 pt-4">
+      <div className="space-y-2 flex-shrink-0">
         <Button
           as="a"
           href={result.playlist_url}
@@ -91,7 +93,7 @@ export function ResultCard() {
 
       {/* Not found tracks info */}
       {result.not_found && result.not_found.length > 0 && (
-        <div className="pt-4 border-t border-gray-700">
+        <div className="pt-4 border-t border-gray-700 flex-shrink-0">
           <p className="text-spotify-text text-xs">
             {result.not_found.length} track(s) couldn't be found on Spotify
           </p>

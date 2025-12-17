@@ -12,9 +12,13 @@ interface GenerationContextType {
   state: GenerationState;
   selectedPlaylistId: string | null;
   selectedPlaylistName: string | null;
+  selectedPlaylistUrl: string | null;
+  selectedPlaylistImage: string | null;
   textDescription: string;
-  setSelectedPlaylist: (id: string | null, name?: string | null) => void;
+  playlistBrowseMode: boolean;
+  setSelectedPlaylist: (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null) => void;
   setTextDescription: (text: string) => void;
+  setPlaylistBrowseMode: (mode: boolean) => void;
   generateFromPlaylist: () => Promise<void>;
   generateFromText: () => Promise<void>;
   reset: () => void;
@@ -42,12 +46,21 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
   const [selectedPlaylistName, setSelectedPlaylistName] = useState<
     string | null
   >(null);
+  const [selectedPlaylistUrl, setSelectedPlaylistUrl] = useState<string | null>(
+    null
+  );
+  const [selectedPlaylistImage, setSelectedPlaylistImage] = useState<string | null>(
+    null
+  );
   const [textDescription, setTextDescriptionState] = useState('');
+  const [playlistBrowseMode, setPlaylistBrowseMode] = useState(false);
 
   const setSelectedPlaylist = useCallback(
-    (id: string | null, name?: string | null) => {
+    (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null) => {
       setSelectedPlaylistId(id);
       setSelectedPlaylistName(name ?? null);
+      setSelectedPlaylistUrl(url ?? null);
+      setSelectedPlaylistImage(imageUrl ?? null);
     },
     []
   );
@@ -106,6 +119,8 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
     setState(initialState);
     setSelectedPlaylistId(null);
     setSelectedPlaylistName(null);
+    setSelectedPlaylistUrl(null);
+    setSelectedPlaylistImage(null);
     setTextDescriptionState('');
   }, []);
 
@@ -115,9 +130,13 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
         state,
         selectedPlaylistId,
         selectedPlaylistName,
+        selectedPlaylistUrl,
+        selectedPlaylistImage,
         textDescription,
+        playlistBrowseMode,
         setSelectedPlaylist,
         setTextDescription,
+        setPlaylistBrowseMode,
         generateFromPlaylist,
         generateFromText,
         reset,

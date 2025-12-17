@@ -1,24 +1,20 @@
 import type { FormEvent } from 'react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Button, Input } from '../components/ui';
+import { useLocalStorage, useSpotifyPopupGuide } from '../hooks';
+import { Button, Input, SpotifyGuideLayout, GuideInputRow } from '../components/ui';
 
 const MAX_HISTORY = 5;
 const HISTORY_KEY = 'spotify_profile_history';
 
-// Open Spotify in a popup window positioned on the right half of the screen
-function openSpotifyHelpPopup(): Window | null {
-  const width = Math.floor(window.screen.availWidth / 2);
-  const height = window.screen.availHeight;
-  const left = Math.floor(window.screen.availWidth / 2);
-  return window.open(
-    'https://open.spotify.com',
-    'spotify',
-    `width=${width},height=${height},left=${left},top=0`
-  );
-}
+const USERNAME_GUIDE_STEPS = [
+  { title: 'Log in to Spotify', description: "Sign in if you haven't already" },
+  { title: 'Click your profile picture', description: 'Located in the top-right corner' },
+  { title: 'Click "Profile"', description: 'Opens your profile page' },
+  { title: 'Click "..." then "Copy link to profile"', description: 'The three-dot menu near your name' },
+  { title: 'Paste the link below', description: "We'll extract your username automatically" },
+];
 
 // Extract username from Spotify URL
 function extractUsernameFromUrl(input: string): string | null {
@@ -35,7 +31,6 @@ export function Landing() {
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [helpMode, setHelpMode] = useState(false);
-  const popupRef = useRef<Window | null>(null);
   const [recentSearches, setRecentSearches] = useLocalStorage<string[]>(
     HISTORY_KEY,
     []
@@ -45,37 +40,23 @@ export function Landing() {
   const extractedUsername = extractUsernameFromUrl(input);
   const isUrlInput = input.includes('open.spotify.com');
 
-  // Try to read clipboard and auto-fill if it contains a Spotify URL
-  const checkClipboardForSpotifyUrl = useCallback(async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      const username = extractUsernameFromUrl(text);
-      if (username && !input) {
-        setInput(text);
-        // Auto-submit after a short delay
-        setTimeout(() => {
-          const form = document.querySelector('form');
-          if (form) form.requestSubmit();
-        }, 600);
-      }
-    } catch {
-      // Clipboard access denied or not available - silently ignore
+  // Handle input detected from clipboard
+  const handleInputDetected = useCallback((text: string) => {
+    if (!input) {
+      setInput(text);
+      // Auto-submit after a short delay
+      setTimeout(() => {
+        const form = document.querySelector('form');
+        if (form) form.requestSubmit();
+      }, 600);
     }
   }, [input]);
 
-  // Auto-check clipboard when page becomes visible (user switches back from Spotify)
-  useEffect(() => {
-    if (!helpMode) return;
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkClipboardForSpotifyUrl();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [helpMode, checkClipboardForSpotifyUrl]);
+  const { openPopup, checkClipboard, closePopup } = useSpotifyPopupGuide({
+    spotifyUrl: 'https://open.spotify.com',
+    isValidInput: (text) => text.includes('open.spotify.com/user/'),
+    onInputDetected: handleInputDetected,
+  });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -102,12 +83,10 @@ export function Landing() {
       setRecentSearches(newHistory);
 
       // Close the Spotify popup if open
-      if (popupRef.current && !popupRef.current.closed) {
-        popupRef.current.close();
-      }
+      closePopup();
 
       navigate(`/app?user=${encodeURIComponent(usernameToUse)}`);
-    } catch (e) {
+    } catch {
       // Error is already set by UserContext
     }
   };
@@ -118,7 +97,7 @@ export function Landing() {
 
   const enterHelpMode = () => {
     setHelpMode(true);
-    popupRef.current = openSpotifyHelpPopup();
+    openPopup();
   };
 
   const displayError = error || apiError;
@@ -126,123 +105,53 @@ export function Landing() {
   // Help Mode: Full-page split layout with instructions on left
   if (helpMode) {
     return (
-      <div className="min-h-screen flex flex-col p-8 w-1/2">
-        <button
-          type="button"
-          onClick={() => setHelpMode(false)}
-          className="text-spotify-text hover:text-white mb-6 self-start flex items-center gap-2"
-        >
-          ← Back
-        </button>
+      <SpotifyGuideLayout
+        title="Find Your Username"
+        subtitle="Follow these steps in the Spotify window on the right:"
+        steps={USERNAME_GUIDE_STEPS}
+        onBack={() => setHelpMode(false)}
+      >
+        {/* Error Message */}
+        {displayError && (
+          <div className="bg-red-500/20 border border-red-500 text-red-400 px-5 py-3 rounded-lg mb-4">
+            {displayError}
+          </div>
+        )}
 
-        <div className="flex-1 flex flex-col justify-center max-w-lg">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Find Your Username
-          </h1>
-          <p className="text-spotify-text mb-8">
-            Follow these steps in the Spotify window on the right:
-          </p>
-
-          <ol className="space-y-6 mb-10">
-            <li className="flex gap-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
-                1
-              </span>
-              <div>
-                <p className="text-white font-medium">Log in to Spotify</p>
-                <p className="text-spotify-text text-sm">Sign in if you haven't already</p>
+        {/* Input Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <GuideInputRow
+              value={input}
+              onChange={(value) => {
+                setInput(value);
+                setError(null);
+              }}
+              onPaste={checkClipboard}
+              placeholder="Paste your profile link here"
+            />
+            {isUrlInput && extractedUsername && (
+              <div className="mt-2 text-sm text-spotify-green">
+                Found username: <span className="font-medium">{extractedUsername}</span>
               </div>
-            </li>
-            <li className="flex gap-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
-                2
-              </span>
-              <div>
-                <p className="text-white font-medium">Click your profile picture</p>
-                <p className="text-spotify-text text-sm">Located in the top-right corner</p>
+            )}
+            {isUrlInput && !extractedUsername && (
+              <div className="mt-2 text-sm text-yellow-500">
+                Couldn't extract username from URL. Make sure it's a profile link.
               </div>
-            </li>
-            <li className="flex gap-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
-                3
-              </span>
-              <div>
-                <p className="text-white font-medium">Click "Profile"</p>
-                <p className="text-spotify-text text-sm">Opens your profile page</p>
-              </div>
-            </li>
-            <li className="flex gap-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
-                4
-              </span>
-              <div>
-                <p className="text-white font-medium">Click "..." then "Copy link to profile"</p>
-                <p className="text-spotify-text text-sm">The three-dot menu near your name</p>
-              </div>
-            </li>
-            <li className="flex gap-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-full bg-spotify-green text-black font-bold flex items-center justify-center">
-                5
-              </span>
-              <div>
-                <p className="text-white font-medium">Paste the link below</p>
-                <p className="text-spotify-text text-sm">We'll extract your username automatically</p>
-              </div>
-            </li>
-          </ol>
-
-          {/* Error Message */}
-          {displayError && (
-            <div className="bg-red-500/20 border border-red-500 text-red-400 px-5 py-3 rounded-lg mb-4">
-              {displayError}
-            </div>
-          )}
-
-          {/* Input Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <div className="flex gap-2 items-stretch">
-                <Input
-                  value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value);
-                    setError(null);
-                  }}
-                  placeholder="Paste your profile link here"
-                  className="text-lg flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={checkClipboardForSpotifyUrl}
-                  className="px-4 bg-spotify-light-gray text-white border border-gray-600 hover:border-spotify-green rounded-lg transition-colors"
-                  title="Paste from clipboard"
-                >
-                  📋 Paste
-                </button>
-              </div>
-              {isUrlInput && extractedUsername && (
-                <div className="mt-2 text-sm text-spotify-green">
-                  Found username: <span className="font-medium">{extractedUsername}</span>
-                </div>
-              )}
-              {isUrlInput && !extractedUsername && (
-                <div className="mt-2 text-sm text-yellow-500">
-                  Couldn't extract username from URL. Make sure it's a profile link.
-                </div>
-              )}
-            </div>
-            <Button
-              type="submit"
-              size="lg"
-              isLoading={isLoading}
-              className="w-full"
-              disabled={!input.trim()}
-            >
-              Get Started
-            </Button>
-          </form>
-        </div>
-      </div>
+            )}
+          </div>
+          <Button
+            type="submit"
+            size="lg"
+            isLoading={isLoading}
+            className="w-full"
+            disabled={!input.trim()}
+          >
+            Get Started
+          </Button>
+        </form>
+      </SpotifyGuideLayout>
     );
   }
 

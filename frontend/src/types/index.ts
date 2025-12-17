@@ -45,6 +45,7 @@ export interface PlaylistValidation {
   playlist_id: string;
   playlist_name: string;
   tracks_total: number;
+  images: SpotifyImage[];
 }
 
 export type GenerationStatus = 'idle' | 'loading' | 'success' | 'error';

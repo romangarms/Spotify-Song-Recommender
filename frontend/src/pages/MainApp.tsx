@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { GenerationProvider } from '../context/GenerationContext';
+import { GenerationProvider, useGeneration } from '../context/GenerationContext';
 import { ThreeColumnLayout } from '../components/layout';
 import { ProfileCard } from '../components/features/profile';
 import { GenerationTabs } from '../components/features/generation';
 import { ResultCard } from '../components/features/generation';
+import { PlaylistBrowseGuide } from '../components/features/playlist';
 import { ProfileSkeleton, PlaylistListSkeleton, ResultSkeleton } from '../components/ui';
 
 export function MainApp() {
@@ -49,11 +50,23 @@ export function MainApp() {
 
   return (
     <GenerationProvider>
-      <ThreeColumnLayout
-        left={<ProfileCard />}
-        middle={<GenerationTabs />}
-        right={<ResultCard />}
-      />
+      <MainAppContent />
     </GenerationProvider>
+  );
+}
+
+function MainAppContent() {
+  const { playlistBrowseMode } = useGeneration();
+
+  if (playlistBrowseMode) {
+    return <PlaylistBrowseGuide />;
+  }
+
+  return (
+    <ThreeColumnLayout
+      left={<ProfileCard />}
+      middle={<GenerationTabs />}
+      right={<ResultCard />}
+    />
   );
 }

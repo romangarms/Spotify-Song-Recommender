@@ -97,7 +97,8 @@ def validate_playlist_url():
         return jsonify({
             "playlist_id": playlist_id,
             "playlist_name": playlist.get("name", "Unknown Playlist"),
-            "tracks_total": playlist["tracks"]["total"]
+            "tracks_total": playlist["tracks"]["total"],
+            "images": playlist.get("images", [])
         })
 
     except ValueError as e:
