@@ -18,7 +18,7 @@ export function PlaylistCard({
       onClick={onClick}
       className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left ${
         isSelected
-          ? 'bg-spotify-light-gray border-l-4 border-spotify-green'
+          ? 'bg-spotify-green/20 border-l-4 border-spotify-green'
           : 'hover:bg-spotify-light-gray/50'
       }`}
     >
