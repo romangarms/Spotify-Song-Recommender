@@ -116,6 +116,21 @@ export function Landing() {
     navigate(`/app?user=${encodeURIComponent(username)}`);
   };
 
+  const handleRemovePlaylist = (e: React.MouseEvent, playlistId: string) => {
+    e.stopPropagation();
+    setRecentSearches(recentSearches.filter(item => item.playlistId !== playlistId));
+  };
+
+  const handleRemoveUser = (e: React.MouseEvent, username: string) => {
+    e.stopPropagation();
+    setRecentUsers(recentUsers.filter(user => user.username !== username));
+  };
+
+  const handleClearAll = () => {
+    setRecentSearches([]);
+    setRecentUsers([]);
+  };
+
   // Main landing page
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-5">
@@ -172,40 +187,74 @@ export function Landing() {
           </Button>
         </form>
 
-        {/* Recent Playlists */}
-        {recentSearches.length > 0 && (
+        {/* Recent Playlists and Users */}
+        {(recentSearches.length > 0 || recentUsers.length > 0) && (
           <div className="mb-8">
-            <p className="text-sm text-gray-500 mb-3">Recent playlists:</p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {recentSearches.map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => handlePlaylistClick(item)}
-                  className="bg-spotify-light-gray border border-gray-600 text-spotify-text px-4 py-2 rounded-full text-sm hover:border-spotify-green hover:text-white transition-colors"
-                  title={item.url}
-                >
-                  {item.name}
-                </button>
-              ))}
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <p className="text-sm text-gray-500">Recent:</p>
+              <button
+                onClick={handleClearAll}
+                className="text-xs px-3 py-1 bg-spotify-light-gray border border-gray-600 text-gray-400 hover:text-red-400 hover:border-red-400 rounded-full transition-colors"
+              >
+                Clear all
+              </button>
             </div>
-          </div>
-        )}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Recent Playlists Column */}
+              <div>
+                <p className="text-xs text-gray-500 mb-2 text-center">Playlists</p>
+                <div className="space-y-1">
+                  {recentSearches.length > 0 ? (
+                    recentSearches.map((item, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handlePlaylistClick(item)}
+                        className="relative w-full bg-spotify-light-gray border border-gray-600 text-spotify-text px-3 py-2 pr-8 rounded-lg text-sm hover:border-spotify-green hover:text-white transition-colors text-left"
+                        title={item.url}
+                      >
+                        <div className="truncate">{item.name}</div>
+                        <span
+                          onClick={(e) => handleRemovePlaylist(e, item.playlistId)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:text-red-400 transition-colors cursor-pointer"
+                          aria-label="Remove"
+                        >
+                          ✕
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-600 text-center py-4">No recent playlists</p>
+                  )}
+                </div>
+              </div>
 
-        {/* Recent Users */}
-        {recentUsers.length > 0 && (
-          <div className="mb-8">
-            <p className="text-sm text-gray-500 mb-3">Recent users:</p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {recentUsers.map((user, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleUserClick(user.username)}
-                  className="bg-spotify-light-gray border border-gray-600 text-spotify-text px-4 py-2 rounded-full text-sm hover:border-spotify-green hover:text-white transition-colors"
-                  title={`@${user.username}`}
-                >
-                  {user.displayName}
-                </button>
-              ))}
+              {/* Recent Users Column */}
+              <div>
+                <p className="text-xs text-gray-500 mb-2 text-center">Users</p>
+                <div className="space-y-1">
+                  {recentUsers.length > 0 ? (
+                    recentUsers.map((user, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleUserClick(user.username)}
+                        className="relative w-full bg-spotify-light-gray border border-gray-600 text-spotify-text px-3 py-2 pr-8 rounded-lg text-sm hover:border-spotify-green hover:text-white transition-colors text-left"
+                        title={`@${user.username}`}
+                      >
+                        <div className="truncate">{user.displayName}</div>
+                        <span
+                          onClick={(e) => handleRemoveUser(e, user.username)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:text-red-400 transition-colors cursor-pointer"
+                          aria-label="Remove"
+                        >
+                          ✕
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-600 text-center py-4">No recent users</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
