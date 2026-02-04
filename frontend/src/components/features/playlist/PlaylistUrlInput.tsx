@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '../../ui';
 import { useGeneration } from '../../../context/GenerationContext';
-import { useUser } from '../../../context/UserContext';
 import { api } from '../../../api/client';
-import { openSpotifyPlaylistBrowser } from './PlaylistBrowseGuide';
 
 type ValidationStatus = {
   type: 'idle' | 'loading' | 'success' | 'error';
@@ -17,8 +15,7 @@ export function PlaylistUrlInput() {
     type: 'idle',
     message: '',
   });
-  const { selectedPlaylistUrl, selectedPlaylistName, selectedPlaylistImage, selectionSource, setSelectedPlaylist, setPlaylistBrowseMode } = useGeneration();
-  const { profile } = useUser();
+  const { selectedPlaylistUrl, selectedPlaylistName, selectedPlaylistImage, selectionSource, setSelectedPlaylist } = useGeneration();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync URL from context (when returning from browse guide)
@@ -40,11 +37,6 @@ export function PlaylistUrlInput() {
       setStatus({ type: 'idle', message: '' });
     }
   }, [selectionSource]);
-
-  const handleBrowseAll = () => {
-    openSpotifyPlaylistBrowser(profile?.id);
-    setPlaylistBrowseMode(true);
-  };
 
   const handleClear = () => {
     setUrl('');
@@ -143,14 +135,6 @@ export function PlaylistUrlInput() {
           {status.message}
         </p>
       )}
-
-      <button
-        type="button"
-        onClick={handleBrowseAll}
-        className="text-sm text-spotify-text hover:text-spotify-green transition-colors"
-      >
-        Can't find your playlist? Browse all &rarr;
-      </button>
     </div>
   );
 }

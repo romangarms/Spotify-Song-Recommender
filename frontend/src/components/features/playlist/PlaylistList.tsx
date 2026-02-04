@@ -2,17 +2,10 @@ import { useUser } from '../../../context/UserContext';
 import { useGeneration } from '../../../context/GenerationContext';
 import { PlaylistCard } from './PlaylistCard';
 import { PlaylistListSkeleton } from '../../ui/Skeleton';
-import { Button } from '../../ui';
-import { openSpotifyPlaylistBrowser } from './PlaylistBrowseGuide';
 
 export function PlaylistList() {
-  const { playlists, isLoading, profile } = useUser();
-  const { selectedPlaylistId, setSelectedPlaylist, setPlaylistBrowseMode } = useGeneration();
-
-  const handleBrowseAll = () => {
-    openSpotifyPlaylistBrowser(profile?.id);
-    setPlaylistBrowseMode(true);
-  };
+  const { playlists, isLoading } = useUser();
+  const { selectedPlaylistId, setSelectedPlaylist } = useGeneration();
 
   if (isLoading) {
     return <PlaylistListSkeleton />;
@@ -28,12 +21,6 @@ export function PlaylistList() {
         <p className="text-sm mt-2 text-left">
           In Spotify: right-click a playlist → Make Public, then right-click the playlist again → Add to Profile.
         </p>
-        <Button
-          onClick={handleBrowseAll}
-          className="w-full mt-4"
-        >
-          Browse All My Playlists
-        </Button>
       </div>
     );
   }

@@ -6,14 +6,12 @@ import { ThreeColumnLayout } from '../components/layout';
 import { ProfileCard } from '../components/features/profile';
 import { GenerationTabs } from '../components/features/generation';
 import { ResultCard } from '../components/features/generation';
-import { PlaylistBrowseGuide } from '../components/features/playlist';
 import { ProfileSkeleton, PlaylistListSkeleton, ResultSkeleton } from '../components/ui';
 
 export function MainApp() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { profile, isLoading, username, setUsername } = useUser();
-  const hasAttemptedLoad = useRef(false);
 
   // Load profile from URL param
   useEffect(() => {
@@ -60,7 +58,7 @@ export function MainApp() {
 function MainAppContent() {
   const [searchParams] = useSearchParams();
   const { playlists } = useUser();
-  const { playlistBrowseMode, selectedPlaylistId, setSelectedPlaylist } = useGeneration();
+  const { selectedPlaylistId, setSelectedPlaylist } = useGeneration();
   const hasAutoSelected = useRef(false);
 
   // Auto-select playlist from query parameter
@@ -88,10 +86,6 @@ function MainAppContent() {
       }
     }
   }, [searchParams, playlists, selectedPlaylistId, setSelectedPlaylist]);
-
-  if (playlistBrowseMode) {
-    return <PlaylistBrowseGuide />;
-  }
 
   return (
     <ThreeColumnLayout

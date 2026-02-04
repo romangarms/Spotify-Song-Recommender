@@ -126,7 +126,7 @@ export function Landing() {
             Spotify Song Recommender
           </h1>
           <p className="text-xl text-spotify-text leading-relaxed">
-            Get personalized playlist recommendations powered by AI. Paste a Spotify playlist URL to get started.
+            Discover new music based on your favorite playlists. Paste a Spotify playlist URL to generate AI-powered recommendations.
           </p>
         </div>
 
@@ -218,19 +218,19 @@ export function Landing() {
           <ul className="space-y-3 text-spotify-text">
             <li className="flex items-start gap-3">
               <span className="text-spotify-green mt-1">✓</span>
-              <span>Paste any public Spotify playlist to get started</span>
+              <span>Paste any public Spotify playlist URL to begin</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-spotify-green mt-1">✓</span>
-              <span>Generate new playlists based on existing ones</span>
+              <span>See all public playlists from that user</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-spotify-green mt-1">✓</span>
-              <span>Use any public playlist as inspiration</span>
+              <span>Generate new playlists using AI based on your selection</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-spotify-green mt-1">✓</span>
-              <span>Get shareable Spotify links instantly</span>
+              <span>Get shareable Spotify links to your AI-generated playlists</span>
             </li>
           </ul>
         </div>

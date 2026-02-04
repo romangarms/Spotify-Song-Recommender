@@ -16,10 +16,8 @@ interface GenerationContextType {
   selectedPlaylistImage: string | null;
   selectionSource: 'url' | 'list' | null;
   textDescription: string;
-  playlistBrowseMode: boolean;
   setSelectedPlaylist: (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null, source?: 'url' | 'list' | null) => void;
   setTextDescription: (text: string) => void;
-  setPlaylistBrowseMode: (mode: boolean) => void;
   generateFromPlaylist: () => Promise<void>;
   generateFromText: () => Promise<void>;
   reset: () => void;
@@ -55,7 +53,6 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
   );
   const [selectionSource, setSelectionSource] = useState<'url' | 'list' | null>(null);
   const [textDescription, setTextDescriptionState] = useState('');
-  const [playlistBrowseMode, setPlaylistBrowseMode] = useState(false);
 
   const setSelectedPlaylist = useCallback(
     (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null, source?: 'url' | 'list' | null) => {
@@ -138,10 +135,8 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
         selectedPlaylistImage,
         selectionSource,
         textDescription,
-        playlistBrowseMode,
         setSelectedPlaylist,
         setTextDescription,
-        setPlaylistBrowseMode,
         generateFromPlaylist,
         generateFromText,
         reset,
