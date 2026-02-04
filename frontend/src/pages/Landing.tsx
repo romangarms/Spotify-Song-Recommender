@@ -141,7 +141,7 @@ export function Landing() {
             Spotify Song Recommender
           </h1>
           <p className="text-xl text-spotify-text leading-relaxed">
-            Discover new music based on your favorite playlists. Paste a Spotify playlist URL to generate AI-powered recommendations.
+            Discover new music based on your favorite playlists. Paste a Spotify playlist URL to generate recommendations powered by the Logic API.
           </p>
         </div>
 
@@ -259,29 +259,29 @@ export function Landing() {
           </div>
         )}
 
-        {/* Features */}
+        {/* How it works */}
         <div className="bg-spotify-gray rounded-2xl p-6 text-left">
           <h2 className="text-lg font-semibold text-white mb-4">
-            What you can do:
+            How it works:
           </h2>
-          <ul className="space-y-3 text-spotify-text">
+          <ol className="space-y-3 text-spotify-text">
             <li className="flex items-start gap-3">
-              <span className="text-spotify-green mt-1">✓</span>
-              <span>Paste any public Spotify playlist URL to begin</span>
+              <span className="text-spotify-green font-semibold min-w-6">1.</span>
+              <span>Paste a Spotify playlist URL to use as input</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-spotify-green mt-1">✓</span>
-              <span>See all public playlists from that user</span>
+              <span className="text-spotify-green font-semibold min-w-6">2.</span>
+              <span>An LLM analyzes your music taste and playlist themes</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-spotify-green mt-1">✓</span>
-              <span>Generate new playlists using AI based on your selection</span>
+              <span className="text-spotify-green font-semibold min-w-6">3.</span>
+              <span>The AI generates 15 personalized song recommendations</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-spotify-green mt-1">✓</span>
-              <span>Get shareable Spotify links to your AI-generated playlists</span>
+              <span className="text-spotify-green font-semibold min-w-6">4.</span>
+              <span>A new Spotify playlist is created with your recommendations</span>
             </li>
-          </ul>
+          </ol>
         </div>
 
         {/* Footer */}

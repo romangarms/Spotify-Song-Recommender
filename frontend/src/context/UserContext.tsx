@@ -15,6 +15,7 @@ interface UserContextType {
   error: string | null;
   username: string | null;
   setUsername: (username: string) => Promise<void>;
+  refreshPlaylists: () => Promise<void>;
   clearUser: () => void;
 }
 
@@ -56,6 +57,25 @@ export function UserProvider({ children }: UserProviderProps) {
     }
   }, []);
 
+  const refreshPlaylists = useCallback(async () => {
+    if (!username) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const playlistsData = await api.getPlaylists(username);
+      setPlaylists(playlistsData.playlists);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to load playlists';
+      setError(errorMessage);
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [username]);
+
   const clearUser = useCallback(() => {
     setProfile(null);
     setPlaylists([]);
@@ -72,6 +92,7 @@ export function UserProvider({ children }: UserProviderProps) {
         error,
         username,
         setUsername,
+        refreshPlaylists,
         clearUser,
       }}
     >

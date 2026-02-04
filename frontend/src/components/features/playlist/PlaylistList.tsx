@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { useUser } from '../../../context/UserContext';
 import { useGeneration } from '../../../context/GenerationContext';
 import { PlaylistCard } from './PlaylistCard';
@@ -5,7 +6,21 @@ import { PlaylistListSkeleton } from '../../ui/Skeleton';
 
 export function PlaylistList() {
   const { playlists, isLoading } = useUser();
-  const { selectedPlaylistId, setSelectedPlaylist } = useGeneration();
+  const { selectedPlaylistId, setSelectedPlaylist, selectionSource } = useGeneration();
+  const selectedRef = useRef<HTMLDivElement>(null);
+  const hasScrolled = useRef(false);
+
+  // Auto-scroll to selected playlist when it's selected from URL
+  useEffect(() => {
+    if (selectedPlaylistId && selectionSource === 'url' && !hasScrolled.current && selectedRef.current) {
+      selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      hasScrolled.current = true;
+    }
+    // Reset scroll flag when selection changes
+    if (!selectedPlaylistId) {
+      hasScrolled.current = false;
+    }
+  }, [selectedPlaylistId, selectionSource]);
 
   if (isLoading) {
     return <PlaylistListSkeleton />;
@@ -28,12 +43,16 @@ export function PlaylistList() {
   return (
     <div className="space-y-1 h-full overflow-y-auto pr-2">
       {playlists.map((playlist) => (
-        <PlaylistCard
+        <div
           key={playlist.id}
-          playlist={playlist}
-          isSelected={selectedPlaylistId === playlist.id}
-          onClick={() => setSelectedPlaylist(playlist.id, playlist.name, undefined, undefined, 'list')}
-        />
+          ref={selectedPlaylistId === playlist.id ? selectedRef : null}
+        >
+          <PlaylistCard
+            playlist={playlist}
+            isSelected={selectedPlaylistId === playlist.id}
+            onClick={() => setSelectedPlaylist(playlist.id, playlist.name, undefined, undefined, 'list')}
+          />
+        </div>
       ))}
     </div>
   );

@@ -69,7 +69,7 @@ export function ResultCard() {
       </div>
 
       {/* Actions */}
-      <div className="space-y-2 flex-shrink-0">
+      <div className="shrink-0">
         <Button
           as="a"
           href={result.playlist_url}
@@ -79,15 +79,6 @@ export function ResultCard() {
           size="lg"
         >
           Open in Spotify
-        </Button>
-
-        <Button
-          variant="secondary"
-          onClick={reset}
-          className="w-full"
-          size="md"
-        >
-          Generate Another
         </Button>
       </div>
 

@@ -11,18 +11,29 @@ import { ProfileSkeleton, PlaylistListSkeleton, ResultSkeleton } from '../compon
 export function MainApp() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { profile, isLoading, username, setUsername } = useUser();
+  const { profile, isLoading, username, setUsername, refreshPlaylists } = useUser();
+  const lastRefreshKey = useRef<string | null>(null);
 
   // Load profile from URL param
   useEffect(() => {
     const userParam = searchParams.get('user');
+    const playlistParam = searchParams.get('playlist');
     const decodedUserParam = userParam ? decodeURIComponent(userParam) : null;
+
+    // Create a key for this navigation to track if we've processed it
+    const currentKey = `${decodedUserParam}-${playlistParam}`;
 
     // Load if we have a user param and it's different from the current username
     if (decodedUserParam && decodedUserParam !== username && !isLoading) {
       setUsername(decodedUserParam);
+      lastRefreshKey.current = currentKey;
     }
-  }, [searchParams, username, isLoading, setUsername]);
+    // If same username and we have a playlist param, refresh playlists to get latest
+    else if (decodedUserParam && decodedUserParam === username && !isLoading && playlistParam && lastRefreshKey.current !== currentKey) {
+      refreshPlaylists();
+      lastRefreshKey.current = currentKey;
+    }
+  }, [searchParams, username, isLoading, setUsername, refreshPlaylists]);
 
   // Redirect to landing if no profile and no user param
   useEffect(() => {
