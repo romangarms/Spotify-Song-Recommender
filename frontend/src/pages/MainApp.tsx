@@ -12,17 +12,19 @@ import { ProfileSkeleton, PlaylistListSkeleton, ResultSkeleton } from '../compon
 export function MainApp() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { profile, isLoading, setUsername } = useUser();
+  const { profile, isLoading, username, setUsername } = useUser();
   const hasAttemptedLoad = useRef(false);
 
-  // Load profile from URL param on mount
+  // Load profile from URL param
   useEffect(() => {
     const userParam = searchParams.get('user');
-    if (userParam && !profile && !isLoading && !hasAttemptedLoad.current) {
-      hasAttemptedLoad.current = true;
-      setUsername(decodeURIComponent(userParam));
+    const decodedUserParam = userParam ? decodeURIComponent(userParam) : null;
+
+    // Load if we have a user param and it's different from the current username
+    if (decodedUserParam && decodedUserParam !== username && !isLoading) {
+      setUsername(decodedUserParam);
     }
-  }, [searchParams, profile, isLoading, setUsername]);
+  }, [searchParams, username, isLoading, setUsername]);
 
   // Redirect to landing if no profile and no user param
   useEffect(() => {
@@ -79,7 +81,8 @@ function MainAppContent() {
           playlist.id,
           playlist.name,
           `https://open.spotify.com/playlist/${playlist.id}`,
-          playlist.images?.[0]?.url
+          playlist.images?.[0]?.url,
+          'url'
         );
         hasAutoSelected.current = true;
       }

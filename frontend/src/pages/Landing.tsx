@@ -7,11 +7,18 @@ import { api } from '../api/client';
 
 const MAX_HISTORY = 5;
 const HISTORY_KEY = 'spotify_playlist_history_v2';
+const USER_HISTORY_KEY = 'spotify_user_history_v1';
+const MAX_USER_HISTORY = 5;
 
 interface PlaylistHistoryItem {
   url: string;
   name: string;
   playlistId: string;
+}
+
+interface UserHistoryItem {
+  username: string;
+  displayName: string;
 }
 
 // Extract playlist ID from Spotify URL
@@ -36,6 +43,10 @@ export function Landing() {
     HISTORY_KEY,
     []
   );
+  const [recentUsers, setRecentUsers] = useLocalStorage<UserHistoryItem[]>(
+    USER_HISTORY_KEY,
+    []
+  );
 
   // Check if input looks like a playlist URL
   const extractedPlaylistId = extractPlaylistIdFromUrl(input);
@@ -57,8 +68,8 @@ export function Landing() {
       // Get playlist owner
       const ownerData = await api.getPlaylistOwner(trimmedInput);
 
-      // Save to history with metadata
-      const newHistory = [
+      // Save playlist to history
+      const newPlaylistHistory = [
         {
           url: trimmedInput,
           name: ownerData.playlist_name,
@@ -66,7 +77,17 @@ export function Landing() {
         },
         ...recentSearches.filter((item) => item.url !== trimmedInput),
       ].slice(0, MAX_HISTORY);
-      setRecentSearches(newHistory);
+      setRecentSearches(newPlaylistHistory);
+
+      // Save user to history
+      const newUserHistory = [
+        {
+          username: ownerData.username,
+          displayName: ownerData.display_name,
+        },
+        ...recentUsers.filter((user) => user.username !== ownerData.username),
+      ].slice(0, MAX_USER_HISTORY);
+      setRecentUsers(newUserHistory);
 
       // Navigate to app with username AND playlist ID for auto-selection
       navigate(`/app?user=${encodeURIComponent(ownerData.username)}&playlist=${encodeURIComponent(ownerData.playlist_id)}`);
@@ -77,8 +98,22 @@ export function Landing() {
     }
   };
 
-  const handleHistoryClick = (url: string) => {
-    setInput(url);
+  const handlePlaylistClick = async (item: PlaylistHistoryItem) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const ownerData = await api.getPlaylistOwner(item.url);
+      navigate(`/app?user=${encodeURIComponent(ownerData.username)}&playlist=${encodeURIComponent(item.playlistId)}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load playlist');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUserClick = (username: string) => {
+    navigate(`/app?user=${encodeURIComponent(username)}`);
   };
 
   // Main landing page
@@ -145,11 +180,30 @@ export function Landing() {
               {recentSearches.map((item, index) => (
                 <button
                   key={index}
-                  onClick={() => handleHistoryClick(item.url)}
+                  onClick={() => handlePlaylistClick(item)}
                   className="bg-spotify-light-gray border border-gray-600 text-spotify-text px-4 py-2 rounded-full text-sm hover:border-spotify-green hover:text-white transition-colors"
                   title={item.url}
                 >
                   {item.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Users */}
+        {recentUsers.length > 0 && (
+          <div className="mb-8">
+            <p className="text-sm text-gray-500 mb-3">Recent users:</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {recentUsers.map((user, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleUserClick(user.username)}
+                  className="bg-spotify-light-gray border border-gray-600 text-spotify-text px-4 py-2 rounded-full text-sm hover:border-spotify-green hover:text-white transition-colors"
+                  title={`@${user.username}`}
+                >
+                  {user.displayName}
                 </button>
               ))}
             </div>

@@ -17,7 +17,7 @@ export function PlaylistUrlInput() {
     type: 'idle',
     message: '',
   });
-  const { selectedPlaylistUrl, selectedPlaylistName, selectedPlaylistImage, setSelectedPlaylist, setPlaylistBrowseMode } = useGeneration();
+  const { selectedPlaylistUrl, selectedPlaylistName, selectedPlaylistImage, selectionSource, setSelectedPlaylist, setPlaylistBrowseMode } = useGeneration();
   const { profile } = useUser();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -33,6 +33,14 @@ export function PlaylistUrlInput() {
     }
   }, [selectedPlaylistUrl, selectedPlaylistName, selectedPlaylistImage, url]);
 
+  // Clear URL input when playlist is selected from list
+  useEffect(() => {
+    if (selectionSource === 'list') {
+      setUrl('');
+      setStatus({ type: 'idle', message: '' });
+    }
+  }, [selectionSource]);
+
   const handleBrowseAll = () => {
     openSpotifyPlaylistBrowser(profile?.id);
     setPlaylistBrowseMode(true);
@@ -41,7 +49,7 @@ export function PlaylistUrlInput() {
   const handleClear = () => {
     setUrl('');
     setStatus({ type: 'idle', message: '' });
-    setSelectedPlaylist(null);
+    setSelectedPlaylist(null, null, null, null, null);
   };
 
   // Debounced URL validation
@@ -75,12 +83,12 @@ export function PlaylistUrlInput() {
           message: `Found: ${result.playlist_name} (${result.tracks_total} tracks)`,
           imageUrl,
         });
-        setSelectedPlaylist(result.playlist_id, result.playlist_name, url, imageUrl);
+        setSelectedPlaylist(result.playlist_id, result.playlist_name, url, imageUrl, 'url');
       } catch (e) {
         const errorMessage =
           e instanceof Error ? e.message : 'Could not access playlist';
         setStatus({ type: 'error', message: errorMessage });
-        setSelectedPlaylist(null);
+        setSelectedPlaylist(null, null, null, null, null);
       }
     }, 800);
 

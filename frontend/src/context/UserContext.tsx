@@ -13,6 +13,7 @@ interface UserContextType {
   playlists: Playlist[];
   isLoading: boolean;
   error: string | null;
+  username: string | null;
   setUsername: (username: string) => Promise<void>;
   clearUser: () => void;
 }
@@ -28,10 +29,12 @@ export function UserProvider({ children }: UserProviderProps) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [username, setUsernameState] = useState<string | null>(null);
 
   const setUsername = useCallback(async (username: string) => {
     setIsLoading(true);
     setError(null);
+    setUsernameState(username);
 
     try {
       // Fetch profile and playlists in parallel
@@ -46,6 +49,7 @@ export function UserProvider({ children }: UserProviderProps) {
       const errorMessage =
         e instanceof Error ? e.message : 'Failed to load profile';
       setError(errorMessage);
+      setUsernameState(null);
       throw e;
     } finally {
       setIsLoading(false);
@@ -56,6 +60,7 @@ export function UserProvider({ children }: UserProviderProps) {
     setProfile(null);
     setPlaylists([]);
     setError(null);
+    setUsernameState(null);
   }, []);
 
   return (
@@ -65,6 +70,7 @@ export function UserProvider({ children }: UserProviderProps) {
         playlists,
         isLoading,
         error,
+        username,
         setUsername,
         clearUser,
       }}

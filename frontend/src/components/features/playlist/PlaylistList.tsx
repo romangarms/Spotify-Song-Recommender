@@ -45,7 +45,7 @@ export function PlaylistList() {
           key={playlist.id}
           playlist={playlist}
           isSelected={selectedPlaylistId === playlist.id}
-          onClick={() => setSelectedPlaylist(playlist.id, playlist.name)}
+          onClick={() => setSelectedPlaylist(playlist.id, playlist.name, undefined, undefined, 'list')}
         />
       ))}
     </div>
