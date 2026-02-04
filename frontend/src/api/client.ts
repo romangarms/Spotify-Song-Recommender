@@ -9,6 +9,8 @@ import type {
   GeneratedPlaylist,
   PlaylistValidation,
   ApiError,
+  PlaylistOwnerResponse,
+  PlaylistSearchResponse,
 } from '../types';
 
 const API_BASE = '/api';
@@ -82,6 +84,25 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ description }),
     });
+  }
+
+  /**
+   * Get playlist owner username from playlist URL
+   */
+  async getPlaylistOwner(playlistUrl: string): Promise<PlaylistOwnerResponse> {
+    return this.fetchJson<PlaylistOwnerResponse>('/playlist/owner', {
+      method: 'POST',
+      body: JSON.stringify({ playlist_url: playlistUrl }),
+    });
+  }
+
+  /**
+   * Search for public playlists
+   */
+  async searchPlaylists(query: string, limit: number = 10): Promise<PlaylistSearchResponse> {
+    return this.fetchJson<PlaylistSearchResponse>(
+      `/search/playlists?q=${encodeURIComponent(query)}&limit=${limit}`
+    );
   }
 
   /**

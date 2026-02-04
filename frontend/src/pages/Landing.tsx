@@ -1,25 +1,27 @@
 import type { FormEvent } from 'react';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
-import { useLocalStorage, useSpotifyPopupGuide } from '../hooks';
-import { Button, Input, SpotifyGuideLayout, GuideInputRow } from '../components/ui';
+import { useLocalStorage } from '../hooks';
+import { Button, Input } from '../components/ui';
+import { api } from '../api/client';
 
 const MAX_HISTORY = 5;
-const HISTORY_KEY = 'spotify_profile_history';
+const HISTORY_KEY = 'spotify_playlist_history_v2';
 
-const USERNAME_GUIDE_STEPS = [
-  { title: 'Log in to Spotify', description: "Sign in if you haven't already" },
-  { title: 'Click your profile picture', description: 'Located in the top-right corner' },
-  { title: 'Click "Profile"', description: 'Opens your profile page' },
-  { title: 'Click "..." then "Copy link to profile"', description: 'The three-dot menu near your name' },
-  { title: 'Paste the link below', description: "We'll extract your username automatically" },
-];
+interface PlaylistHistoryItem {
+  url: string;
+  name: string;
+  playlistId: string;
+}
 
-// Extract username from Spotify URL
-function extractUsernameFromUrl(input: string): string | null {
-  if (input.includes('open.spotify.com/user/')) {
-    const match = input.match(/open\.spotify\.com\/user\/([a-zA-Z0-9_.-]+)/);
+// Extract playlist ID from Spotify URL
+function extractPlaylistIdFromUrl(input: string): string | null {
+  if (input.includes('open.spotify.com/playlist/')) {
+    const match = input.match(/open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null;
+  }
+  if (input.includes('spotify:playlist:')) {
+    const match = input.match(/spotify:playlist:([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
   }
   return null;
@@ -27,135 +29,59 @@ function extractUsernameFromUrl(input: string): string | null {
 
 export function Landing() {
   const navigate = useNavigate();
-  const { setUsername, isLoading, error: apiError } = useUser();
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [helpMode, setHelpMode] = useState(false);
-  const [recentSearches, setRecentSearches] = useLocalStorage<string[]>(
+  const [isLoading, setIsLoading] = useState(false);
+  const [recentSearches, setRecentSearches] = useLocalStorage<PlaylistHistoryItem[]>(
     HISTORY_KEY,
     []
   );
 
-  // Check if input looks like a URL and extract username
-  const extractedUsername = extractUsernameFromUrl(input);
-  const isUrlInput = input.includes('open.spotify.com');
-
-  // Handle input detected from clipboard
-  const handleInputDetected = useCallback((text: string) => {
-    if (!input) {
-      setInput(text);
-      // Auto-submit after a short delay
-      setTimeout(() => {
-        const form = document.querySelector('form');
-        if (form) form.requestSubmit();
-      }, 600);
-    }
-  }, [input]);
-
-  const { openPopup, checkClipboard, closePopup } = useSpotifyPopupGuide({
-    spotifyUrl: 'https://open.spotify.com',
-    isValidInput: (text) => text.includes('open.spotify.com/user/'),
-    onInputDetected: handleInputDetected,
-  });
+  // Check if input looks like a playlist URL
+  const extractedPlaylistId = extractPlaylistIdFromUrl(input);
+  const isPlaylistUrl = extractedPlaylistId !== null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const trimmedInput = input.trim();
 
     if (!trimmedInput) {
-      setError('Please enter a username');
+      setError('Please enter a playlist URL');
       return;
     }
 
-    // Use extracted username if it's a URL, otherwise use raw input
-    const usernameToUse = extractedUsername || trimmedInput;
-
     setError(null);
+    setIsLoading(true);
 
     try {
-      await setUsername(usernameToUse);
+      // Get playlist owner
+      const ownerData = await api.getPlaylistOwner(trimmedInput);
 
-      // Save to history (save the username, not the full URL)
+      // Save to history with metadata
       const newHistory = [
-        usernameToUse,
-        ...recentSearches.filter((s) => s !== usernameToUse),
+        {
+          url: trimmedInput,
+          name: ownerData.playlist_name,
+          playlistId: ownerData.playlist_id,
+        },
+        ...recentSearches.filter((item) => item.url !== trimmedInput),
       ].slice(0, MAX_HISTORY);
       setRecentSearches(newHistory);
 
-      // Close the Spotify popup if open
-      closePopup();
-
-      navigate(`/app?user=${encodeURIComponent(usernameToUse)}`);
-    } catch {
-      // Error is already set by UserContext
+      // Navigate to app with username AND playlist ID for auto-selection
+      navigate(`/app?user=${encodeURIComponent(ownerData.username)}&playlist=${encodeURIComponent(ownerData.playlist_id)}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load playlist');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleHistoryClick = (search: string) => {
-    setInput(search);
+  const handleHistoryClick = (url: string) => {
+    setInput(url);
   };
 
-  const enterHelpMode = () => {
-    setHelpMode(true);
-    openPopup();
-  };
-
-  const displayError = error || apiError;
-
-  // Help Mode: Full-page split layout with instructions on left
-  if (helpMode) {
-    return (
-      <SpotifyGuideLayout
-        title="Find Your Username"
-        subtitle="Follow these steps in the Spotify window on the right:"
-        steps={USERNAME_GUIDE_STEPS}
-        onBack={() => setHelpMode(false)}
-      >
-        {/* Error Message */}
-        {displayError && (
-          <div className="bg-red-500/20 border border-red-500 text-red-400 px-5 py-3 rounded-lg mb-4">
-            {displayError}
-          </div>
-        )}
-
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <GuideInputRow
-              value={input}
-              onChange={(value) => {
-                setInput(value);
-                setError(null);
-              }}
-              onPaste={checkClipboard}
-              placeholder="Paste your profile link here"
-            />
-            {isUrlInput && extractedUsername && (
-              <div className="mt-2 text-sm text-spotify-green">
-                Found username: <span className="font-medium">{extractedUsername}</span>
-              </div>
-            )}
-            {isUrlInput && !extractedUsername && (
-              <div className="mt-2 text-sm text-yellow-500">
-                Couldn't extract username from URL. Make sure it's a profile link.
-              </div>
-            )}
-          </div>
-          <Button
-            type="submit"
-            size="lg"
-            isLoading={isLoading}
-            className="w-full"
-            disabled={!input.trim()}
-          >
-            Get Started
-          </Button>
-        </form>
-      </SpotifyGuideLayout>
-    );
-  }
-
-  // Normal landing page
+  // Main landing page
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-5">
       <div className="max-w-[600px] w-full text-center">
@@ -165,37 +91,19 @@ export function Landing() {
             Spotify Song Recommender
           </h1>
           <p className="text-xl text-spotify-text leading-relaxed">
-            Get personalized playlist recommendations powered by the Logic API. Enter your
-            Spotify username to get started.
+            Get personalized playlist recommendations powered by AI. Paste a Spotify playlist URL to get started.
           </p>
         </div>
 
         {/* Error Message */}
-        {displayError && (
+        {error && (
           <div className="bg-red-500/20 border border-red-500 text-red-400 px-5 py-3 rounded-lg mb-6">
-            {displayError}
+            {error}
           </div>
         )}
 
-        {/* Primary CTA - Find Username */}
-        <Button
-          type="button"
-          size="lg"
-          onClick={enterHelpMode}
-          className="w-full mb-6"
-        >
-          Find My Username
-        </Button>
-
-        {/* Divider */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1 h-px bg-gray-700" />
-          <span className="text-gray-500 text-sm">or enter it directly</span>
-          <div className="flex-1 h-px bg-gray-700" />
-        </div>
-
-        {/* Secondary - Manual Input */}
-        <form onSubmit={handleSubmit} className="space-y-4 mb-8">
+        {/* Primary Input */}
+        <form onSubmit={handleSubmit} className="space-y-4 mb-6">
           <div className="relative">
             <Input
               value={input}
@@ -203,44 +111,45 @@ export function Landing() {
                 setInput(e.target.value);
                 setError(null);
               }}
-              placeholder="Spotify username or profile URL"
+              placeholder="Paste Spotify playlist URL"
               className="text-center text-lg"
             />
-            {/* Show extracted username when URL is pasted */}
-            {isUrlInput && extractedUsername && (
+            {/* Show extracted playlist ID when URL is pasted */}
+            {isPlaylistUrl && (
               <div className="mt-2 text-sm text-spotify-green">
-                Found username: <span className="font-medium">{extractedUsername}</span>
+                Found playlist! Ready to go
               </div>
             )}
-            {isUrlInput && !extractedUsername && (
+            {input && !isPlaylistUrl && (
               <div className="mt-2 text-sm text-yellow-500">
-                Couldn't extract username from URL. Please paste a profile URL.
+                Couldn't find a valid playlist URL. Please paste a Spotify playlist link.
               </div>
             )}
           </div>
           <Button
             type="submit"
             size="lg"
-            variant="secondary"
             isLoading={isLoading}
             className="w-full"
+            disabled={!input.trim() || !isPlaylistUrl}
           >
             Get Started
           </Button>
         </form>
 
-        {/* Recent Searches */}
+        {/* Recent Playlists */}
         {recentSearches.length > 0 && (
           <div className="mb-8">
-            <p className="text-sm text-gray-500 mb-3">Recent searches:</p>
+            <p className="text-sm text-gray-500 mb-3">Recent playlists:</p>
             <div className="flex flex-wrap gap-2 justify-center">
-              {recentSearches.map((search) => (
+              {recentSearches.map((item, index) => (
                 <button
-                  key={search}
-                  onClick={() => handleHistoryClick(search)}
+                  key={index}
+                  onClick={() => handleHistoryClick(item.url)}
                   className="bg-spotify-light-gray border border-gray-600 text-spotify-text px-4 py-2 rounded-full text-sm hover:border-spotify-green hover:text-white transition-colors"
+                  title={item.url}
                 >
-                  {search}
+                  {item.name}
                 </button>
               ))}
             </div>
@@ -255,24 +164,19 @@ export function Landing() {
           <ul className="space-y-3 text-spotify-text">
             <li className="flex items-start gap-3">
               <span className="text-spotify-green mt-1">✓</span>
-              <span>
-                Generate playlists based on your existing playlist's vibe
-              </span>
+              <span>Paste any public Spotify playlist to get started</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-spotify-green mt-1">✓</span>
-              <span>
-                Create custom playlists from text descriptions (e.g., "summer
-                indie vibes")
-              </span>
+              <span>Generate new playlists based on existing ones</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-spotify-green mt-1">✓</span>
-              <span>Use any public playlist as inspiration, not just yours</span>
+              <span>Use any public playlist as inspiration</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-spotify-green mt-1">✓</span>
-              <span>Get a shareable Spotify playlist link instantly</span>
+              <span>Get shareable Spotify links instantly</span>
             </li>
           </ul>
         </div>

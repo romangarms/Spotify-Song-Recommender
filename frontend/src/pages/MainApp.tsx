@@ -56,7 +56,35 @@ export function MainApp() {
 }
 
 function MainAppContent() {
-  const { playlistBrowseMode } = useGeneration();
+  const [searchParams] = useSearchParams();
+  const { playlists } = useUser();
+  const { playlistBrowseMode, selectedPlaylistId, setSelectedPlaylist } = useGeneration();
+  const hasAutoSelected = useRef(false);
+
+  // Auto-select playlist from query parameter
+  useEffect(() => {
+    const playlistParam = searchParams.get('playlist');
+
+    // Only auto-select if:
+    // - We have a playlist param
+    // - Playlists are loaded
+    // - No playlist is currently selected
+    // - We haven't already auto-selected
+    if (playlistParam && playlists.length > 0 && !selectedPlaylistId && !hasAutoSelected.current) {
+      const playlistId = decodeURIComponent(playlistParam);
+      const playlist = playlists.find(p => p.id === playlistId);
+
+      if (playlist) {
+        setSelectedPlaylist(
+          playlist.id,
+          playlist.name,
+          `https://open.spotify.com/playlist/${playlist.id}`,
+          playlist.images?.[0]?.url
+        );
+        hasAutoSelected.current = true;
+      }
+    }
+  }, [searchParams, playlists, selectedPlaylistId, setSelectedPlaylist]);
 
   if (playlistBrowseMode) {
     return <PlaylistBrowseGuide />;
