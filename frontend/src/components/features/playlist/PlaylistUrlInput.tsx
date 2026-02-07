@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '../../ui';
 import { useGeneration } from '../../../context/GenerationContext';
-import { useUser } from '../../../context/UserContext';
 import { api } from '../../../api/client';
-import { openSpotifyPlaylistBrowser } from './PlaylistBrowseGuide';
 
 type ValidationStatus = {
   type: 'idle' | 'loading' | 'success' | 'error';
@@ -17,8 +15,7 @@ export function PlaylistUrlInput() {
     type: 'idle',
     message: '',
   });
-  const { selectedPlaylistUrl, selectedPlaylistName, selectedPlaylistImage, setSelectedPlaylist, setPlaylistBrowseMode } = useGeneration();
-  const { profile } = useUser();
+  const { selectedPlaylistUrl, selectedPlaylistName, selectedPlaylistImage, selectionSource, setSelectedPlaylist } = useGeneration();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync URL from context (when returning from browse guide)
@@ -33,15 +30,18 @@ export function PlaylistUrlInput() {
     }
   }, [selectedPlaylistUrl, selectedPlaylistName, selectedPlaylistImage, url]);
 
-  const handleBrowseAll = () => {
-    openSpotifyPlaylistBrowser(profile?.id);
-    setPlaylistBrowseMode(true);
-  };
+  // Clear URL input when playlist is selected from list
+  useEffect(() => {
+    if (selectionSource === 'list') {
+      setUrl('');
+      setStatus({ type: 'idle', message: '' });
+    }
+  }, [selectionSource]);
 
   const handleClear = () => {
     setUrl('');
     setStatus({ type: 'idle', message: '' });
-    setSelectedPlaylist(null);
+    setSelectedPlaylist(null, null, null, null, null);
   };
 
   // Debounced URL validation
@@ -75,12 +75,12 @@ export function PlaylistUrlInput() {
           message: `Found: ${result.playlist_name} (${result.tracks_total} tracks)`,
           imageUrl,
         });
-        setSelectedPlaylist(result.playlist_id, result.playlist_name, url, imageUrl);
+        setSelectedPlaylist(result.playlist_id, result.playlist_name, url, imageUrl, 'url');
       } catch (e) {
         const errorMessage =
           e instanceof Error ? e.message : 'Could not access playlist';
         setStatus({ type: 'error', message: errorMessage });
-        setSelectedPlaylist(null);
+        setSelectedPlaylist(null, null, null, null, null);
       }
     }, 800);
 
@@ -135,14 +135,6 @@ export function PlaylistUrlInput() {
           {status.message}
         </p>
       )}
-
-      <button
-        type="button"
-        onClick={handleBrowseAll}
-        className="text-sm text-spotify-text hover:text-spotify-green transition-colors"
-      >
-        Can't find your playlist? Browse all &rarr;
-      </button>
     </div>
   );
 }

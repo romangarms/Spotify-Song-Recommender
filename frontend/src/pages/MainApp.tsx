@@ -6,23 +6,34 @@ import { ThreeColumnLayout } from '../components/layout';
 import { ProfileCard } from '../components/features/profile';
 import { GenerationTabs } from '../components/features/generation';
 import { ResultCard } from '../components/features/generation';
-import { PlaylistBrowseGuide } from '../components/features/playlist';
 import { ProfileSkeleton, PlaylistListSkeleton, ResultSkeleton } from '../components/ui';
 
 export function MainApp() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { profile, isLoading, setUsername } = useUser();
-  const hasAttemptedLoad = useRef(false);
+  const { profile, isLoading, username, setUsername, refreshPlaylists } = useUser();
+  const lastRefreshKey = useRef<string | null>(null);
 
-  // Load profile from URL param on mount
+  // Load profile from URL param
   useEffect(() => {
     const userParam = searchParams.get('user');
-    if (userParam && !profile && !isLoading && !hasAttemptedLoad.current) {
-      hasAttemptedLoad.current = true;
-      setUsername(decodeURIComponent(userParam));
+    const playlistParam = searchParams.get('playlist');
+    const decodedUserParam = userParam ? decodeURIComponent(userParam) : null;
+
+    // Create a key for this navigation to track if we've processed it
+    const currentKey = `${decodedUserParam}-${playlistParam}`;
+
+    // Load if we have a user param and it's different from the current username
+    if (decodedUserParam && decodedUserParam !== username && !isLoading) {
+      setUsername(decodedUserParam);
+      lastRefreshKey.current = currentKey;
     }
-  }, [searchParams, profile, isLoading, setUsername]);
+    // If same username and we have a playlist param, refresh playlists to get latest
+    else if (decodedUserParam && decodedUserParam === username && !isLoading && playlistParam && lastRefreshKey.current !== currentKey) {
+      refreshPlaylists();
+      lastRefreshKey.current = currentKey;
+    }
+  }, [searchParams, username, isLoading, setUsername, refreshPlaylists]);
 
   // Redirect to landing if no profile and no user param
   useEffect(() => {
@@ -56,11 +67,36 @@ export function MainApp() {
 }
 
 function MainAppContent() {
-  const { playlistBrowseMode } = useGeneration();
+  const [searchParams] = useSearchParams();
+  const { playlists } = useUser();
+  const { selectedPlaylistId, setSelectedPlaylist } = useGeneration();
+  const hasAutoSelected = useRef(false);
 
-  if (playlistBrowseMode) {
-    return <PlaylistBrowseGuide />;
-  }
+  // Auto-select playlist from query parameter
+  useEffect(() => {
+    const playlistParam = searchParams.get('playlist');
+
+    // Only auto-select if:
+    // - We have a playlist param
+    // - Playlists are loaded
+    // - No playlist is currently selected
+    // - We haven't already auto-selected
+    if (playlistParam && playlists.length > 0 && !selectedPlaylistId && !hasAutoSelected.current) {
+      const playlistId = decodeURIComponent(playlistParam);
+      const playlist = playlists.find(p => p.id === playlistId);
+
+      if (playlist) {
+        setSelectedPlaylist(
+          playlist.id,
+          playlist.name,
+          `https://open.spotify.com/playlist/${playlist.id}`,
+          playlist.images?.[0]?.url,
+          'url'
+        );
+        hasAutoSelected.current = true;
+      }
+    }
+  }, [searchParams, playlists, selectedPlaylistId, setSelectedPlaylist]);
 
   return (
     <ThreeColumnLayout

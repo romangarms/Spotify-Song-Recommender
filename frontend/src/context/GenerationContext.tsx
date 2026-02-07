@@ -14,11 +14,10 @@ interface GenerationContextType {
   selectedPlaylistName: string | null;
   selectedPlaylistUrl: string | null;
   selectedPlaylistImage: string | null;
+  selectionSource: 'url' | 'list' | null;
   textDescription: string;
-  playlistBrowseMode: boolean;
-  setSelectedPlaylist: (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null) => void;
+  setSelectedPlaylist: (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null, source?: 'url' | 'list' | null) => void;
   setTextDescription: (text: string) => void;
-  setPlaylistBrowseMode: (mode: boolean) => void;
   generateFromPlaylist: () => Promise<void>;
   generateFromText: () => Promise<void>;
   reset: () => void;
@@ -52,15 +51,16 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
   const [selectedPlaylistImage, setSelectedPlaylistImage] = useState<string | null>(
     null
   );
+  const [selectionSource, setSelectionSource] = useState<'url' | 'list' | null>(null);
   const [textDescription, setTextDescriptionState] = useState('');
-  const [playlistBrowseMode, setPlaylistBrowseMode] = useState(false);
 
   const setSelectedPlaylist = useCallback(
-    (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null) => {
+    (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null, source?: 'url' | 'list' | null) => {
       setSelectedPlaylistId(id);
       setSelectedPlaylistName(name ?? null);
       setSelectedPlaylistUrl(url ?? null);
       setSelectedPlaylistImage(imageUrl ?? null);
+      setSelectionSource(id ? (source ?? 'list') : null);
     },
     []
   );
@@ -121,6 +121,7 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
     setSelectedPlaylistName(null);
     setSelectedPlaylistUrl(null);
     setSelectedPlaylistImage(null);
+    setSelectionSource(null);
     setTextDescriptionState('');
   }, []);
 
@@ -132,11 +133,10 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
         selectedPlaylistName,
         selectedPlaylistUrl,
         selectedPlaylistImage,
+        selectionSource,
         textDescription,
-        playlistBrowseMode,
         setSelectedPlaylist,
         setTextDescription,
-        setPlaylistBrowseMode,
         generateFromPlaylist,
         generateFromText,
         reset,

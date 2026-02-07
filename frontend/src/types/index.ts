@@ -60,3 +60,28 @@ export interface ApiError {
   error: string;
   message: string;
 }
+
+export interface PlaylistOwnerResponse {
+  username: string;
+  display_name: string;
+  playlist_name: string;
+  playlist_id: string;
+}
+
+export interface SearchedPlaylist {
+  id: string;
+  name: string;
+  owner: {
+    id: string;
+    display_name: string;
+  };
+  image_url?: string;
+  tracks_total: number;
+  url: string;
+}
+
+export interface PlaylistSearchResponse {
+  playlists: SearchedPlaylist[];
+  query: string;
+  count: number;
+}

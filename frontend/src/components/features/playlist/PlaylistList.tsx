@@ -1,18 +1,26 @@
+import { useRef, useEffect } from 'react';
 import { useUser } from '../../../context/UserContext';
 import { useGeneration } from '../../../context/GenerationContext';
 import { PlaylistCard } from './PlaylistCard';
 import { PlaylistListSkeleton } from '../../ui/Skeleton';
-import { Button } from '../../ui';
-import { openSpotifyPlaylistBrowser } from './PlaylistBrowseGuide';
 
 export function PlaylistList() {
-  const { playlists, isLoading, profile } = useUser();
-  const { selectedPlaylistId, setSelectedPlaylist, setPlaylistBrowseMode } = useGeneration();
+  const { playlists, isLoading } = useUser();
+  const { selectedPlaylistId, setSelectedPlaylist, selectionSource } = useGeneration();
+  const selectedRef = useRef<HTMLDivElement>(null);
+  const hasScrolled = useRef(false);
 
-  const handleBrowseAll = () => {
-    openSpotifyPlaylistBrowser(profile?.id);
-    setPlaylistBrowseMode(true);
-  };
+  // Auto-scroll to selected playlist when it's selected from URL
+  useEffect(() => {
+    if (selectedPlaylistId && selectionSource === 'url' && !hasScrolled.current && selectedRef.current) {
+      selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      hasScrolled.current = true;
+    }
+    // Reset scroll flag when selection changes
+    if (!selectedPlaylistId) {
+      hasScrolled.current = false;
+    }
+  }, [selectedPlaylistId, selectionSource]);
 
   if (isLoading) {
     return <PlaylistListSkeleton />;
@@ -28,12 +36,6 @@ export function PlaylistList() {
         <p className="text-sm mt-2 text-left">
           In Spotify: right-click a playlist → Make Public, then right-click the playlist again → Add to Profile.
         </p>
-        <Button
-          onClick={handleBrowseAll}
-          className="w-full mt-4"
-        >
-          Browse All My Playlists
-        </Button>
       </div>
     );
   }
@@ -41,12 +43,16 @@ export function PlaylistList() {
   return (
     <div className="space-y-1 h-full overflow-y-auto pr-2">
       {playlists.map((playlist) => (
-        <PlaylistCard
+        <div
           key={playlist.id}
-          playlist={playlist}
-          isSelected={selectedPlaylistId === playlist.id}
-          onClick={() => setSelectedPlaylist(playlist.id, playlist.name)}
-        />
+          ref={selectedPlaylistId === playlist.id ? selectedRef : null}
+        >
+          <PlaylistCard
+            playlist={playlist}
+            isSelected={selectedPlaylistId === playlist.id}
+            onClick={() => setSelectedPlaylist(playlist.id, playlist.name, undefined, undefined, 'list')}
+          />
+        </div>
       ))}
     </div>
   );

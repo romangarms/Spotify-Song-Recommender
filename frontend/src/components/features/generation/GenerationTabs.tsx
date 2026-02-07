@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tabs, Button } from '../../ui';
-import { PlaylistList, PlaylistUrlInput } from '../playlist';
+import { PlaylistList } from '../playlist';
 import { TextInput } from './TextInput';
 import { useGeneration } from '../../../context/GenerationContext';
 
@@ -41,27 +41,9 @@ export function GenerationTabs() {
       <div className="flex-1 min-h-0 overflow-y-auto mt-4">
         {activeTab === 'playlist' ? (
           <div className="flex flex-col h-full">
-            {/* URL Input Section */}
-            <div className="flex-shrink-0">
-              <h3 className="text-white font-semibold mb-2">
-                Paste any playlist URL:
-              </h3>
-              <p className="text-spotify-text text-sm mb-2">
-                Use any public playlist as inspiration (even from other users)
-              </p>
-              <PlaylistUrlInput />
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-4 flex-shrink-0">
-              <div className="flex-1 h-px bg-gray-700" />
-              <span className="text-spotify-text text-sm">OR</span>
-              <div className="flex-1 h-px bg-gray-700" />
-            </div>
-
             {/* Playlist List */}
             <div className="flex-1 min-h-0 flex flex-col">
-              <h3 className="text-white font-semibold mb-2 flex-shrink-0">
+              <h3 className="text-white font-semibold mb-3 flex-shrink-0">
                 Choose from your playlists:
               </h3>
               <div className="flex-1 min-h-0">

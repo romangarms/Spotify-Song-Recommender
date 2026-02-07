@@ -46,7 +46,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'font-semibold rounded-full transition-all duration-200 inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none';
+      'font-semibold rounded-full transition-all duration-200 inline-flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none';
 
     const combinedClassName = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
 
