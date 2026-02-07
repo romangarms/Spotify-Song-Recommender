@@ -6,8 +6,7 @@ Get personalized playlist recommendations powered by the Logic API. This app use
 
 - **Analyze Your Playlists**: Have the AI analyze one of your existing playlists to learn your music taste and create a new playlist from what it learns
 - **Describe Your Ideal Playlist**: Describe your ideal playlist in text, and the AI will generate one for you
-- **No Login Required**: Just enter your Spotify username - no OAuth login needed
-- **Use Any Public Playlist**: Paste any public playlist URL as inspiration, not just your own
+- **No Login Required**: Just paste a public Spotify playlist - no OAuth login needed
 
 ## Quick Start
 
