@@ -29,6 +29,11 @@ class ApiClient {
 
     if (!response.ok) {
       const error = data as ApiError;
+      // Include retry_after in error message if it's a rate limit error
+      if (response.status === 429 && 'retry_after' in data) {
+        const retryAfter = (data as any).retry_after;
+        throw new Error(`${error.message || error.error || 'Request failed'}|||${retryAfter}`);
+      }
       throw new Error(error.message || error.error || 'Request failed');
     }
 
@@ -110,6 +115,16 @@ class ApiClient {
    */
   async healthCheck(): Promise<{ status: string }> {
     return this.fetchJson<{ status: string }>('/health');
+  }
+
+  /**
+   * Test rate limiting without calling Logic API
+   */
+  async testRateLimit(): Promise<GeneratedPlaylist> {
+    return this.fetchJson<GeneratedPlaylist>('/generate/test-rate-limit', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
   }
 }
 

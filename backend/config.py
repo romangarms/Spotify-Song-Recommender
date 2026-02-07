@@ -21,8 +21,8 @@ class Config:
     ]
 
     # Rate limiting
-    RATE_LIMIT_MAX = 10  # Max generations per time window
-    RATE_LIMIT_WINDOW = 3600  # Time window in seconds (1 hour)
+    RATE_LIMIT_MAX = 3  # Max generations per time window
+    RATE_LIMIT_WINDOW = 60  # Time window in seconds (1 minute)
 
 
 class DevelopmentConfig(Config):

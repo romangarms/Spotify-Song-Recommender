@@ -86,8 +86,17 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
         await api.generateFromPlaylist(selectedPlaylistId);
       setState({ status: 'success', result, error: null });
     } catch (e) {
-      const errorMessage =
-        e instanceof Error ? e.message : 'Failed to generate playlist';
+      let errorMessage = 'Failed to generate playlist';
+      if (e instanceof Error) {
+        // Check if error contains retry_after (format: "message|||retryAfter")
+        const parts = e.message.split('|||');
+        if (parts.length === 2) {
+          // Use the message which already includes the retry_after time
+          errorMessage = parts[0];
+        } else {
+          errorMessage = e.message;
+        }
+      }
       setState({ status: 'error', result: null, error: errorMessage });
     }
   }, [selectedPlaylistId]);
@@ -109,8 +118,17 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
         await api.generateFromText(textDescription);
       setState({ status: 'success', result, error: null });
     } catch (e) {
-      const errorMessage =
-        e instanceof Error ? e.message : 'Failed to generate playlist';
+      let errorMessage = 'Failed to generate playlist';
+      if (e instanceof Error) {
+        // Check if error contains retry_after (format: "message|||retryAfter")
+        const parts = e.message.split('|||');
+        if (parts.length === 2) {
+          // Use the message which already includes the retry_after time
+          errorMessage = parts[0];
+        } else {
+          errorMessage = e.message;
+        }
+      }
       setState({ status: 'error', result: null, error: errorMessage });
     }
   }, [textDescription]);
