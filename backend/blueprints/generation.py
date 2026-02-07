@@ -16,6 +16,42 @@ from utils.rate_limit import rate_limit_required
 generation_bp = Blueprint("generation", __name__)
 
 
+@generation_bp.route("/generate/test-rate-limit", methods=["POST"])
+@rate_limit_required
+def test_rate_limit():
+    """
+    Test endpoint to verify rate limiting without calling the Logic API.
+
+    Returns:
+        JSON: Mock playlist generation response
+    """
+    import time
+    # Simulate a small delay like a real API call
+    time.sleep(0.5)
+
+    return jsonify({
+        "playlist_id": "test_playlist_123",
+        "playlist_url": "https://open.spotify.com/playlist/test_playlist_123",
+        "title": "Test Rate Limit Playlist",
+        "description": "This is a test response to verify rate limiting works correctly.",
+        "tracks": [
+            {
+                "name": "Test Song 1",
+                "artist": "Test Artist 1",
+                "album": "Test Album",
+                "spotify_url": "https://open.spotify.com/track/test1"
+            },
+            {
+                "name": "Test Song 2",
+                "artist": "Test Artist 2",
+                "album": "Test Album",
+                "spotify_url": "https://open.spotify.com/track/test2"
+            }
+        ],
+        "not_found": []
+    })
+
+
 @generation_bp.route("/playlist/<playlist_id>/tracks", methods=["GET"])
 def get_tracks(playlist_id):
     """

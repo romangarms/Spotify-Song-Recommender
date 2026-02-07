@@ -4,12 +4,12 @@
   "description": "Get personalized playlist recommendations powered by the Logic API",
   "scripts": {
     "dev": "npm run build:frontend && concurrently -n backend,frontend -c blue,green \"npm run dev:backend\" \"npm run watch:frontend\"",
-    "dev:backend": "cd backend && ./venv/bin/python app.py",
+    "dev:backend": "node backend/start.js",
     "watch:frontend": "cd frontend && npm run build -- --watch",
     "build:frontend": "cd frontend && npm run build",
     "install:all": "cd frontend && npm install",
     "build": "cd frontend && npm run build",
-    "start": "cd backend && ./venv/bin/python app.py"
+    "start": "node backend/start.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"

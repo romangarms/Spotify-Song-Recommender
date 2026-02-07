@@ -170,3 +170,6 @@ fly.toml
 
 # Node
 node_modules/
+
+# LLM
+.claude/

@@ -11,6 +11,25 @@ import spotipy
 admin_bp = Blueprint("admin", __name__)
 
 
+@admin_bp.route("/debug-env", methods=["GET"])
+def debug_env():
+    """Debug endpoint to check if environment variables are loaded."""
+    admin_secret = os.getenv("ADMIN_SECRET")
+    provided_key = request.args.get("key")
+
+    if not admin_secret or provided_key != admin_secret:
+        return jsonify({"error": "unauthorized"}), 401
+
+    return jsonify({
+        "SPOTIPY_CLIENT_ID": bool(os.getenv("SPOTIPY_CLIENT_ID")),
+        "SPOTIPY_CLIENT_SECRET": bool(os.getenv("SPOTIPY_CLIENT_SECRET")),
+        "SPOTIPY_REDIRECT_URI": os.getenv("SPOTIPY_REDIRECT_URI"),
+        "SPOTIFY_SYSTEM_REFRESH_TOKEN": bool(os.getenv("SPOTIFY_SYSTEM_REFRESH_TOKEN")),
+        "SPOTIFY_SYSTEM_REFRESH_TOKEN_length": len(os.getenv("SPOTIFY_SYSTEM_REFRESH_TOKEN", "")),
+        "LOGIC_API_TOKEN": bool(os.getenv("LOGIC_API_TOKEN")),
+    })
+
+
 @admin_bp.route("/spotify-setup", methods=["GET"])
 def admin_spotify_setup():
     """
@@ -49,15 +68,19 @@ def admin_spotify_setup():
         }), 401
 
     # Create OAuth manager for system account setup
+    redirect_uri = os.getenv("SPOTIPY_REDIRECT_URI")
+    print(f"[Admin OAuth] Using redirect URI: {redirect_uri}")
+
     auth_manager = spotipy.oauth2.SpotifyOAuth(
         client_id=os.getenv("SPOTIPY_CLIENT_ID"),
         client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-        redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
+        redirect_uri=redirect_uri,
         scope="playlist-modify-public playlist-modify-private user-read-private",
         show_dialog=True,
     )
 
     auth_url = auth_manager.get_authorize_url()
+    print(f"[Admin OAuth] Generated auth URL: {auth_url[:100]}...")
     return redirect(auth_url)
 
 
