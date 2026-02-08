@@ -1,5 +1,7 @@
 # Spotify Song Recommender
 
+![screenshot of user page](/screenshots/song_rec_user_page.png)
+
 Get personalized playlist recommendations powered by the Logic API. This app uses [Logic.inc](https://logic.inc) to analyze your music taste and generate new playlists.
 
 Use it here: [song-rec.romangarms.com](https://song-rec.romangarms.com/)
