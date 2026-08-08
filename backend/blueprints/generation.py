@@ -9,6 +9,7 @@ from services.system_account import (
     parse_playlist_id_from_url,
     get_playlist_tracks,
     create_playlist_on_system_account,
+    SystemTokenExpiredError,
 )
 from services.logic_api import analyze_playlist, generate_from_text
 from utils.rate_limit import rate_limit_required
@@ -191,6 +192,14 @@ def generate_from_playlist():
             "not_found": result.get("not_found", [])
         })
 
+    except SystemTokenExpiredError as e:
+        print(f"Error generating playlist: {e}")
+        return jsonify({
+            "error": "system_token_expired",
+            "message": "Playlist creation is temporarily unavailable. "
+                       "Please try again later."
+        }), 503
+
     except ValueError as e:
         return jsonify({
             "error": "playlist_error",
@@ -244,6 +253,14 @@ def generate_from_text_route():
             "tracks": result["tracks"],
             "not_found": result.get("not_found", [])
         })
+
+    except SystemTokenExpiredError as e:
+        print(f"Error generating playlist from text: {e}")
+        return jsonify({
+            "error": "system_token_expired",
+            "message": "Playlist creation is temporarily unavailable. "
+                       "Please try again later."
+        }), 503
 
     except ValueError as e:
         return jsonify({

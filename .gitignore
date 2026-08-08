@@ -164,6 +164,7 @@ cython_debug/
 
 #flask
 .flask_session/
+backend/token_metadata.json
 
 #Fly.io config
 fly.toml

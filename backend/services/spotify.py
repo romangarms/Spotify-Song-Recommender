@@ -4,11 +4,12 @@ Spotify API operations module.
 This module contains functions to interact with the Spotify API
 for searching tracks and adding them to playlists.
 
-Uses the system account for all Spotify API calls.
+Track search uses the client credentials flow; playlist writes use the
+system account.
 """
 
 import time
-from .system_account import get_system_spotify
+from .system_account import get_system_spotify, get_public_spotify
 
 # Spotify Constants
 RATE_LIMIT = 0.1  # seconds between API calls
@@ -27,7 +28,7 @@ def search_and_get_tracks(recommendations):
             - found_tracks: List of track dicts with id, name, artist, album, image
             - not_found: List of strings describing tracks not found
     """
-    sp = get_system_spotify()
+    sp = get_public_spotify()
     found_tracks = []
     not_found = []
 

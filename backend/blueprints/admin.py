@@ -7,6 +7,7 @@ Handles admin routes for system account OAuth setup.
 import os
 from flask import Blueprint, request, redirect, jsonify
 import spotipy
+from services.system_account import record_token_issued, get_token_status
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -27,6 +28,7 @@ def debug_env():
         "SPOTIFY_SYSTEM_REFRESH_TOKEN": bool(os.getenv("SPOTIFY_SYSTEM_REFRESH_TOKEN")),
         "SPOTIFY_SYSTEM_REFRESH_TOKEN_length": len(os.getenv("SPOTIFY_SYSTEM_REFRESH_TOKEN", "")),
         "LOGIC_API_TOKEN": bool(os.getenv("LOGIC_API_TOKEN")),
+        "system_token": get_token_status(),
     })
 
 
@@ -115,11 +117,14 @@ def admin_callback():
         token_info = auth_manager.get_access_token(code)
         refresh_token = token_info.get("refresh_token")
 
+        record_token_issued()
+
         # Return the refresh token as JSON
         return jsonify({
             "success": True,
             "refresh_token": refresh_token,
-            "message": "Copy this refresh token and set it as SPOTIFY_SYSTEM_REFRESH_TOKEN environment variable"
+            "message": "Copy this refresh token and set it as SPOTIFY_SYSTEM_REFRESH_TOKEN environment variable. "
+                       "It expires 6 months from now (Spotify policy); re-run this flow before then."
         })
 
     except Exception as e:

@@ -11,7 +11,7 @@ from services.system_account import (
     get_user_profile,
     get_user_public_playlists,
     parse_playlist_id_from_url,
-    get_system_spotify,
+    get_public_spotify,
 )
 
 profile_bp = Blueprint("profile", __name__)
@@ -120,7 +120,7 @@ def get_playlist_owner():
             }), 400
 
         # Get playlist details via Spotify API
-        sp = get_system_spotify()
+        sp = get_public_spotify()
         playlist = sp.playlist(playlist_id, fields="id,name,owner(id,display_name)")
 
         owner = playlist['owner']
@@ -186,7 +186,7 @@ def search_playlists():
         limit = 10
 
     try:
-        sp = get_system_spotify()
+        sp = get_public_spotify()
         results = sp.search(q=query, type='playlist', limit=limit)
 
         playlists = []
