@@ -1,9 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useUser } from '../../context/UserContext';
 import { Button } from '../ui';
 
 export function Header() {
-  const { profile } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -32,24 +30,6 @@ export function Header() {
               Spotify Song Recommender
             </h1>
           </Link>
-        </div>
-
-        {/* Show profile in header on smaller screens */}
-        <div className="flex items-center gap-4 lg:hidden">
-          {profile && (
-            <>
-              <span className="text-white hidden sm:inline text-sm">
-                {profile.display_name}
-              </span>
-              {profile.images?.[0] && (
-                <img
-                  src={profile.images[0].url}
-                  alt={profile.display_name}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-              )}
-            </>
-          )}
         </div>
       </div>
     </header>

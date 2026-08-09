@@ -32,6 +32,27 @@ export interface Track {
   image: string | null;
 }
 
+export interface SeedTrack {
+  id: string;
+  name: string;
+  artist: string;
+  album: string;
+  release_date: string;
+  image: string | null;
+}
+
+export interface TrackResolveResponse {
+  tracks: SeedTrack[];
+  not_found: string[];
+  truncated: boolean;
+}
+
+export interface TrackSearchResponse {
+  tracks: SeedTrack[];
+  query: string;
+  count: number;
+}
+
 export interface GeneratedPlaylist {
   playlist_id: string;
   playlist_url: string;

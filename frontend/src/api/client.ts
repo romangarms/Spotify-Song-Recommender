@@ -11,6 +11,8 @@ import type {
   ApiError,
   PlaylistOwnerResponse,
   PlaylistSearchResponse,
+  TrackResolveResponse,
+  TrackSearchResponse,
 } from '../types';
 
 const API_BASE = '/api';
@@ -99,6 +101,26 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ playlist_url: playlistUrl }),
     });
+  }
+
+  async resolveTracks(text: string): Promise<TrackResolveResponse> {
+    return this.fetchJson<TrackResolveResponse>('/tracks/resolve', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async generateFromTracks(trackIds: string[]): Promise<GeneratedPlaylist> {
+    return this.fetchJson<GeneratedPlaylist>('/generate/from-tracks', {
+      method: 'POST',
+      body: JSON.stringify({ track_ids: trackIds }),
+    });
+  }
+
+  async searchTracks(query: string, limit: number = 10): Promise<TrackSearchResponse> {
+    return this.fetchJson<TrackSearchResponse>(
+      `/search/tracks?q=${encodeURIComponent(query)}&limit=${limit}`
+    );
   }
 
   /**

@@ -7,7 +7,11 @@ Handles admin routes for system account OAuth setup.
 import os
 from flask import Blueprint, request, redirect, jsonify
 import spotipy
-from services.system_account import record_token_issued, get_token_status
+from services.system_account import (
+    record_token_issued,
+    get_token_status,
+    SYSTEM_ACCOUNT_SCOPES,
+)
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -77,7 +81,7 @@ def admin_spotify_setup():
         client_id=os.getenv("SPOTIPY_CLIENT_ID"),
         client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
         redirect_uri=redirect_uri,
-        scope="playlist-modify-public playlist-modify-private user-read-private",
+        scope=SYSTEM_ACCOUNT_SCOPES,
         show_dialog=True,
     )
 
@@ -110,7 +114,7 @@ def admin_callback():
         client_id=os.getenv("SPOTIPY_CLIENT_ID"),
         client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
         redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
-        scope="playlist-modify-public playlist-modify-private user-read-private",
+        scope=SYSTEM_ACCOUNT_SCOPES,
     )
 
     try:
