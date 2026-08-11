@@ -8,7 +8,7 @@ gunicorn==23.0.0
 waitress==3.0.1
 
 # Spotify API
-spotipy==2.25.2
+spotipy==2.26.0
 
 # HTTP client
 requests>=2.28.0

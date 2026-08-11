@@ -2,11 +2,10 @@
 Spotify Song Recommender - Flask API Backend
 
 This is the API backend for the React frontend. It provides JSON APIs
-for profile fetching, playlist operations, and AI-powered playlist generation.
+for track search and AI-powered playlist generation.
 
 System Account Model:
-- Users enter their Spotify profile URL (no OAuth login required)
-- App fetches user's public playlists via system account
+- Users pick seed songs by search or by pasting Spotify song links
 - Generated playlists are created on the system account
 - Users receive a link to the generated playlist
 
@@ -33,6 +32,11 @@ from flask_cors import CORS
 from flask_session import Session
 
 from config import get_config
+from services.system_account import (
+    SystemTokenExpiredError,
+    SpotifyRateLimitedError,
+    RATE_LIMITED_MESSAGE,
+)
 
 # Path to frontend build directory
 FRONTEND_DIST = pathlib.Path(__file__).parent.parent / "frontend" / "dist"
@@ -60,11 +64,9 @@ def create_app(config_class=None):
     Session(app)
 
     # Register blueprints
-    from blueprints.profile import profile_bp
     from blueprints.generation import generation_bp
     from blueprints.admin import admin_bp
 
-    app.register_blueprint(profile_bp, url_prefix="/api")
     app.register_blueprint(generation_bp, url_prefix="/api")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
@@ -74,6 +76,23 @@ def create_app(config_class=None):
         return jsonify({"status": "ok"})
 
     # Error handlers
+    @app.errorhandler(SystemTokenExpiredError)
+    def system_token_expired(error):
+        print(f"System token unavailable: {error}")
+        return jsonify({
+            "error": "system_token_expired",
+            "message": "Spotify access is temporarily unavailable. "
+                       "Please try again later."
+        }), 503
+
+    @app.errorhandler(SpotifyRateLimitedError)
+    def spotify_rate_limited(error):
+        print(f"Spotify rate limited: {error}")
+        return jsonify({
+            "error": "spotify_rate_limited",
+            "message": RATE_LIMITED_MESSAGE
+        }), 503
+
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({

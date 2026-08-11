@@ -5,7 +5,7 @@ import {
   useState,
   useCallback,
 } from 'react';
-import type { GenerationState, GeneratedPlaylist } from '../types';
+import type { GenerationState, GeneratedPlaylist, SeedTrack } from '../types';
 import { api } from '../api/client';
 
 interface GenerationContextType {
@@ -16,10 +16,15 @@ interface GenerationContextType {
   selectedPlaylistImage: string | null;
   selectionSource: 'url' | 'list' | null;
   textDescription: string;
+  seedTracks: SeedTrack[];
   setSelectedPlaylist: (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null, source?: 'url' | 'list' | null) => void;
   setTextDescription: (text: string) => void;
+  addSeedTracks: (tracks: SeedTrack[]) => void;
+  removeSeedTrack: (id: string) => void;
+  clearSeedTracks: () => void;
   generateFromPlaylist: () => Promise<void>;
   generateFromText: () => Promise<void>;
+  generateFromTracks: () => Promise<void>;
   reset: () => void;
 }
 
@@ -37,6 +42,15 @@ const initialState: GenerationState = {
   error: null,
 };
 
+// Rate limit errors arrive as "message|||retryAfter"; the message already
+// names the wait, so the suffix is dropped.
+function toErrorMessage(e: unknown): string {
+  if (!(e instanceof Error)) {
+    return 'Failed to generate playlist';
+  }
+  return e.message.split('|||')[0];
+}
+
 export function GenerationProvider({ children }: GenerationProviderProps) {
   const [state, setState] = useState<GenerationState>(initialState);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(
@@ -53,6 +67,20 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
   );
   const [selectionSource, setSelectionSource] = useState<'url' | 'list' | null>(null);
   const [textDescription, setTextDescriptionState] = useState('');
+  const [seedTracks, setSeedTracks] = useState<SeedTrack[]>([]);
+
+  const addSeedTracks = useCallback((tracks: SeedTrack[]) => {
+    setSeedTracks((current) => {
+      const seen = new Set(current.map((t) => t.id));
+      return [...current, ...tracks.filter((t) => !seen.has(t.id))];
+    });
+  }, []);
+
+  const removeSeedTrack = useCallback((id: string) => {
+    setSeedTracks((current) => current.filter((t) => t.id !== id));
+  }, []);
+
+  const clearSeedTracks = useCallback(() => setSeedTracks([]), []);
 
   const setSelectedPlaylist = useCallback(
     (id: string | null, name?: string | null, url?: string | null, imageUrl?: string | null, source?: 'url' | 'list' | null) => {
@@ -86,18 +114,7 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
         await api.generateFromPlaylist(selectedPlaylistId);
       setState({ status: 'success', result, error: null });
     } catch (e) {
-      let errorMessage = 'Failed to generate playlist';
-      if (e instanceof Error) {
-        // Check if error contains retry_after (format: "message|||retryAfter")
-        const parts = e.message.split('|||');
-        if (parts.length === 2) {
-          // Use the message which already includes the retry_after time
-          errorMessage = parts[0];
-        } else {
-          errorMessage = e.message;
-        }
-      }
-      setState({ status: 'error', result: null, error: errorMessage });
+      setState({ status: 'error', result: null, error: toErrorMessage(e) });
     }
   }, [selectedPlaylistId]);
 
@@ -118,20 +135,31 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
         await api.generateFromText(textDescription);
       setState({ status: 'success', result, error: null });
     } catch (e) {
-      let errorMessage = 'Failed to generate playlist';
-      if (e instanceof Error) {
-        // Check if error contains retry_after (format: "message|||retryAfter")
-        const parts = e.message.split('|||');
-        if (parts.length === 2) {
-          // Use the message which already includes the retry_after time
-          errorMessage = parts[0];
-        } else {
-          errorMessage = e.message;
-        }
-      }
-      setState({ status: 'error', result: null, error: errorMessage });
+      setState({ status: 'error', result: null, error: toErrorMessage(e) });
     }
   }, [textDescription]);
+
+  const generateFromTracks = useCallback(async () => {
+    if (seedTracks.length === 0) {
+      setState({
+        status: 'error',
+        result: null,
+        error: 'Please add at least one song first',
+      });
+      return;
+    }
+
+    setState({ status: 'loading', result: null, error: null });
+
+    try {
+      const result: GeneratedPlaylist = await api.generateFromTracks(
+        seedTracks.map((t) => t.id)
+      );
+      setState({ status: 'success', result, error: null });
+    } catch (e) {
+      setState({ status: 'error', result: null, error: toErrorMessage(e) });
+    }
+  }, [seedTracks]);
 
   const reset = useCallback(() => {
     setState(initialState);
@@ -141,6 +169,7 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
     setSelectedPlaylistImage(null);
     setSelectionSource(null);
     setTextDescriptionState('');
+    setSeedTracks([]);
   }, []);
 
   return (
@@ -153,10 +182,15 @@ export function GenerationProvider({ children }: GenerationProviderProps) {
         selectedPlaylistImage,
         selectionSource,
         textDescription,
+        seedTracks,
         setSelectedPlaylist,
         setTextDescription,
+        addSeedTracks,
+        removeSeedTrack,
+        clearSeedTracks,
         generateFromPlaylist,
         generateFromText,
+        generateFromTracks,
         reset,
       }}
     >

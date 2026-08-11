@@ -8,11 +8,15 @@ Track search uses the client credentials flow; playlist writes use the
 system account.
 """
 
-import time
-from .system_account import get_system_spotify, get_public_spotify
+from .system_account import (
+    get_system_spotify,
+    worker_spotify,
+    parallel_map,
+    SpotifyRateLimitedError,
+    RATE_LIMITED_MESSAGE,
+)
+import spotipy
 
-# Spotify Constants
-RATE_LIMIT = 0.1  # seconds between API calls
 SPOTIFY_ADD_LIMIT = 100  # Spotify allows adding up to 100 tracks at once
 
 
@@ -28,39 +32,44 @@ def search_and_get_tracks(recommendations):
             - found_tracks: List of track dicts with id, name, artist, album, image
             - not_found: List of strings describing tracks not found
     """
-    sp = get_public_spotify()
-    found_tracks = []
-    not_found = []
-
-    for rec in recommendations:
+    def search_one(rec):
         name = rec.get("name")
         artist = rec.get("artist")
-        query = f"track:{name} artist:{artist}"
+        label = f"{name} by {artist}"
 
         try:
-            result = sp.search(q=query, type="track", limit=1)
+            result = worker_spotify().search(
+                q=f"track:{name} artist:{artist}", type="track", limit=1
+            )
             items = result["tracks"]["items"]
-
-            if items:
-                track = items[0]
-                album = track["album"]
-                found_tracks.append({
-                    "id": track["id"],
-                    "name": track["name"],
-                    "artist": track["artists"][0]["name"],
-                    "album": album["name"],
-                    "image": album["images"][0]["url"] if album["images"] else None,
-                })
-                print(f"Found: {name} by {artist}")
-            else:
-                not_found.append(f"{name} by {artist}")
-                print(f"Not found: {name} by {artist}")
-
+        except spotipy.exceptions.SpotifyException as e:
+            if e.http_status == 429:
+                raise SpotifyRateLimitedError(RATE_LIMITED_MESSAGE)
+            print(f"Error searching {label}: {e}")
+            return None, label
         except Exception as e:
-            not_found.append(f"{name} by {artist}")
-            print(f"Error searching {name} by {artist}: {e}")
+            print(f"Error searching {label}: {e}")
+            return None, label
 
-        time.sleep(RATE_LIMIT)  # prevent rate-limiting
+        if not items:
+            print(f"Not found: {label}")
+            return None, label
+
+        track = items[0]
+        album = track["album"]
+        print(f"Found: {label}")
+        return {
+            "id": track["id"],
+            "name": track["name"],
+            "artist": track["artists"][0]["name"],
+            "album": album["name"],
+            "image": album["images"][0]["url"] if album["images"] else None,
+        }, label
+
+    results = parallel_map(search_one, recommendations)
+
+    found_tracks = [track for track, _ in results if track]
+    not_found = [label for track, label in results if not track]
 
     return found_tracks, not_found
 

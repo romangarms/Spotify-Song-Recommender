@@ -4,12 +4,16 @@ System Account Authentication Module
 This module handles authentication for the system Spotify account.
 
 Two auth flows are used:
-- Client Credentials (get_public_spotify): all public-data reads. Not
+- Client Credentials (get_public_spotify): track search and track lookup. Not
   user-scoped, so it is exempt from Spotify's 6-month refresh token expiry.
-- Authorization Code refresh token (get_system_spotify): playlist creation
-  on the system account only. The refresh token is obtained through the
-  admin OAuth flow and expires 6 months after authorization (Spotify policy
-  effective July 2026), after which an admin must re-authorize.
+- Authorization Code refresh token (get_system_spotify): playlist creation and
+  every other write. This token expires 6 months after authorization (Spotify
+  policy effective July 2026), after which an admin must re-authorize via
+  /api/admin/spotify-setup.
+
+Since the February 2026 API changes, no token this app can hold reads other
+users' profiles or the items of playlists the system account does not own, so
+seed songs come from search and pasted track links instead.
 """
 
 import os
@@ -19,6 +23,7 @@ import requests
 import base64
 import threading
 import spotipy
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
 TOKEN_METADATA_FILE = os.path.join(
@@ -27,6 +32,35 @@ TOKEN_METADATA_FILE = os.path.join(
 )
 TOKEN_LIFETIME_DAYS = 180
 TOKEN_WARNING_DAYS = 150
+
+SYSTEM_ACCOUNT_SCOPES = (
+    "playlist-modify-public playlist-modify-private "
+    "playlist-read-private playlist-read-collaborative user-read-private"
+)
+
+# Spotify capped search results at 10 per request in February 2026.
+SEARCH_MAX_LIMIT = 10
+MAX_PASTED_TRACKS = 100
+# Spotify removed batch track fetching in February 2026, so a paste costs one
+# request per track, each a ~100ms round trip. They go out concurrently so the
+# wait tracks the slowest request rather than their sum.
+LOOKUP_WORKERS = 8
+
+RATE_LIMITED_MESSAGE = (
+    "Spotify is rate limiting this app right now. Please try again later."
+)
+
+TOKEN_EXPIRED_MESSAGE = (
+    "System account refresh token is unusable (expired, revoked, or issued "
+    "to a different Spotify app). Re-authorize at /api/admin/spotify-setup, "
+    "update SPOTIFY_SYSTEM_REFRESH_TOKEN, and restart the backend."
+)
+
+
+class SpotifyRateLimitedError(Exception):
+    """Spotify returned 429. Development mode has a daily quota whose
+    Retry-After can be many hours, so this fails the request immediately
+    rather than waiting it out."""
 
 
 class SystemTokenExpiredError(Exception):
@@ -50,6 +84,25 @@ _cc_cache = {
     "expires_at": None,
 }
 
+_thread_local = threading.local()
+
+
+def build_client(access_token):
+    """
+    Build a Spotipy client that fails fast on 429.
+
+    Spotipy retries 429s by sleeping for Retry-After, which in development
+    mode can be most of a day — that turns a rate limit into a hung request,
+    so automatic retrying is disabled here.
+
+    Args:
+        access_token: Spotify access token
+
+    Returns:
+        spotipy.Spotify: Configured client
+    """
+    return spotipy.Spotify(auth=access_token, retries=0)
+
 
 def get_public_spotify():
     """
@@ -61,10 +114,23 @@ def get_public_spotify():
     Raises:
         ValueError: If SPOTIPY_CLIENT_ID/SPOTIPY_CLIENT_SECRET are not set
     """
+    return build_client(get_public_access_token())
+
+
+def get_public_access_token():
+    """
+    Get a valid client credentials access token, refreshing it if expired.
+
+    Returns:
+        str: Access token
+
+    Raises:
+        ValueError: If SPOTIPY_CLIENT_ID/SPOTIPY_CLIENT_SECRET are not set
+    """
     with _cc_lock:
         if _cc_cache["access_token"] and _cc_cache["expires_at"]:
             if datetime.now() < _cc_cache["expires_at"]:
-                return spotipy.Spotify(auth=_cc_cache["access_token"])
+                return _cc_cache["access_token"]
 
         client_id = os.getenv("SPOTIPY_CLIENT_ID")
         client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
@@ -98,7 +164,7 @@ def get_public_spotify():
         _cc_cache["access_token"] = data["access_token"]
         _cc_cache["expires_at"] = datetime.now() + timedelta(seconds=expires_in - 60)
 
-        return spotipy.Spotify(auth=_cc_cache["access_token"])
+        return _cc_cache["access_token"]
 
 
 def get_system_spotify():
@@ -122,11 +188,7 @@ def get_system_spotify():
         )
 
     if _refresh_token_dead:
-        raise SystemTokenExpiredError(
-            "System account refresh token is expired or revoked. "
-            "Re-authorize at /api/admin/spotify-setup, update "
-            "SPOTIFY_SYSTEM_REFRESH_TOKEN, and restart the backend."
-        )
+        raise SystemTokenExpiredError(TOKEN_EXPIRED_MESSAGE)
 
     # Thread-safe token caching
     with _token_lock:
@@ -134,13 +196,13 @@ def get_system_spotify():
         if _token_cache["access_token"] and _token_cache["expires_at"]:
             if datetime.now() < _token_cache["expires_at"]:
                 print("[SystemAccount] Using cached access token")
-                return spotipy.Spotify(auth=_token_cache["access_token"])
+                return build_client(_token_cache["access_token"])
 
         # Get a new access token using the refresh token
         print("[SystemAccount] Refreshing access token...")
         access_token = refresh_access_token(refresh_token)
 
-    return spotipy.Spotify(auth=access_token)
+    return build_client(access_token)
 
 
 def refresh_access_token(refresh_token):
@@ -193,15 +255,13 @@ def refresh_access_token(refresh_token):
 
     if response.status_code != 200:
         print(f"[TokenRefresh] Error response: {response.text}")
-        if "invalid_grant" in response.text:
+        # invalid_client here means the token was issued to a different app,
+        # not bad credentials: the client credentials flow shares them.
+        if "invalid_grant" in response.text or "invalid_client" in response.text:
             _token_cache["access_token"] = None
             _token_cache["expires_at"] = None
             _refresh_token_dead = True
-            raise SystemTokenExpiredError(
-                "System account refresh token is expired or revoked. "
-                "Re-authorize at /api/admin/spotify-setup, update "
-                "SPOTIFY_SYSTEM_REFRESH_TOKEN, and restart the backend."
-            )
+            raise SystemTokenExpiredError(TOKEN_EXPIRED_MESSAGE)
         raise Exception(f"Failed to refresh token: {response.text}")
 
     data = response.json()
@@ -279,171 +339,132 @@ def _warn_if_token_expiring():
         )
 
 
-def parse_user_id_from_url(profile_url):
+def parse_track_ids_from_text(text):
     """
-    Extract user ID from a Spotify profile URL, URI, or plain username.
+    Extract Spotify track IDs from pasted text.
 
-    Supports formats:
-    - https://open.spotify.com/user/abc123
-    - https://open.spotify.com/user/abc123?si=xxx
-    - spotify:user:abc123
-    - abc123 (plain username)
+    Accepts open.spotify.com links, spotify:track: URIs, and bare IDs mixed
+    freely and separated by any whitespace, commas, or semicolons — the
+    desktop app's "copy link" on a multi-selection yields one URL per line.
 
     Args:
-        profile_url: Spotify profile URL, URI, or plain username
+        text: Pasted text possibly containing many track references
 
     Returns:
-        str: User ID or None if invalid
+        list: Track IDs, deduplicated, in the order they appear
     """
-    if not profile_url:
-        return None
+    if not text:
+        return []
 
-    profile_url = profile_url.strip()
+    ids = []
+    seen = set()
 
-    # Handle Spotify URI format (include periods in pattern)
-    uri_match = re.match(r"spotify:user:([a-zA-Z0-9_.-]+)", profile_url)
-    if uri_match:
-        return uri_match.group(1)
+    for token in re.split(r"[\s,;]+", text.strip()):
+        if not token:
+            continue
 
-    # Handle URL format (include periods in pattern)
-    url_match = re.match(
-        r"https?://open\.spotify\.com/user/([a-zA-Z0-9_.-]+)",
-        profile_url
-    )
-    if url_match:
-        return url_match.group(1)
+        match = (
+            re.match(r"^https?://open\.spotify\.com/(?:intl-[a-z-]+/)?track/([a-zA-Z0-9]{22})", token)
+            or re.match(r"^spotify:track:([a-zA-Z0-9]{22})$", token)
+            or re.match(r"^([a-zA-Z0-9]{22})$", token)
+        )
+        if not match:
+            continue
 
-    # Handle plain username (alphanumeric, underscores, hyphens, periods)
-    if re.match(r"^[a-zA-Z0-9_.-]+$", profile_url):
-        return profile_url
+        track_id = match.group(1)
+        if track_id not in seen:
+            seen.add(track_id)
+            ids.append(track_id)
 
-    return None
+    return ids
 
 
-def parse_playlist_id_from_url(playlist_url):
+def worker_spotify():
+    """A Spotify client per worker thread, since a requests Session is not
+    safe to share across threads. Rebuilt when the access token rotates."""
+    token = get_public_access_token()
+    if getattr(_thread_local, "token", None) != token:
+        _thread_local.client = build_client(token)
+        _thread_local.token = token
+    return _thread_local.client
+
+
+def parallel_map(fn, items):
     """
-    Extract playlist ID from a Spotify playlist URL.
-
-    Supports formats:
-    - https://open.spotify.com/playlist/xyz123
-    - https://open.spotify.com/playlist/xyz123?si=xxx
-    - spotify:playlist:xyz123
+    Run fn over items concurrently, preserving order.
 
     Args:
-        playlist_url: Spotify playlist URL or URI
+        fn: Callable taking one item
+        items: Sequence of items
 
     Returns:
-        str: Playlist ID or None if invalid
+        list: Results in the same order as items
     """
-    if not playlist_url:
-        return None
+    if not items:
+        return []
 
-    playlist_url = playlist_url.strip()
-
-    # Handle Spotify URI format
-    uri_match = re.match(r"spotify:playlist:([a-zA-Z0-9]+)", playlist_url)
-    if uri_match:
-        return uri_match.group(1)
-
-    # Handle URL format
-    url_match = re.match(
-        r"https?://open\.spotify\.com/playlist/([a-zA-Z0-9]+)",
-        playlist_url
-    )
-    if url_match:
-        return url_match.group(1)
-
-    return None
+    with ThreadPoolExecutor(max_workers=min(LOOKUP_WORKERS, len(items))) as pool:
+        return list(pool.map(fn, items))
 
 
-def get_user_profile(user_id):
+def fetch_track(track_id):
     """
-    Fetch a user's public profile.
+    Look up one track.
 
     Args:
-        user_id: Spotify user ID
+        track_id: Spotify track ID
 
     Returns:
-        dict: User profile data with keys: id, display_name, images, external_urls
+        dict: Track details, or None if Spotify has no such track
 
     Raises:
-        ValueError: If user not found
-        Exception: If API error
+        spotipy.exceptions.SpotifyException: On any non-404 Spotify error
     """
-    sp = get_public_spotify()
     try:
-        user = sp.user(user_id)
-        return {
-            "id": user["id"],
-            "display_name": user.get("display_name") or user["id"],
-            "images": user.get("images", []),
-            "external_urls": user.get("external_urls", {}),
-        }
+        track = worker_spotify().track(track_id)
     except spotipy.exceptions.SpotifyException as e:
         if e.http_status == 404:
-            raise ValueError(f"User '{user_id}' not found")
+            return None
+        if e.http_status == 429:
+            raise SpotifyRateLimitedError(RATE_LIMITED_MESSAGE)
         raise
 
+    album = track.get("album") or {}
+    return {
+        "id": track["id"],
+        "name": track["name"],
+        "artist": track["artists"][0]["name"] if track.get("artists") else "Unknown",
+        "album": album.get("name", "Unknown"),
+        "release_date": album.get("release_date", ""),
+        "image": album["images"][0]["url"] if album.get("images") else None,
+    }
 
-def get_user_public_playlists(user_id):
+
+def get_tracks_by_ids(track_ids):
     """
-    Fetch a user's public playlists.
+    Resolve track IDs to track details, preserving the given order.
 
     Args:
-        user_id: Spotify user ID
+        track_ids: List of Spotify track IDs
 
     Returns:
-        list: List of playlist dicts with keys: id, name, images, tracks_total
+        tuple: (found_tracks, not_found_ids)
     """
-    sp = get_public_spotify()
-    playlists = []
+    if not track_ids:
+        return [], []
 
-    results = sp.user_playlists(user_id, limit=50)
+    def resolve(track_id):
+        try:
+            return fetch_track(track_id)
+        except spotipy.exceptions.SpotifyException as e:
+            print(f"[Tracks] Lookup failed for {track_id}: {e}")
+            return None
 
-    while results:
-        for item in results["items"]:
-            # Only include public playlists
-            if item.get("public", False):
-                playlists.append({
-                    "id": item["id"],
-                    "name": item["name"],
-                    "images": item.get("images", []),
-                    "tracks_total": item["tracks"]["total"],
-                })
+    resolved = parallel_map(resolve, track_ids)
+    found = [t for t in resolved if t]
+    not_found = [tid for tid, t in zip(track_ids, resolved) if not t]
 
-        if results["next"]:
-            results = sp.next(results)
-        else:
-            break
-
-    return playlists
-
-
-def get_playlist_tracks(playlist_id):
-    """
-    Fetch tracks from a public playlist.
-
-    Args:
-        playlist_id: Spotify playlist ID
-
-    Returns:
-        dict: Playlist data with name and tracks
-
-    Raises:
-        ValueError: If playlist not found or not accessible
-    """
-    sp = get_public_spotify()
-
-    try:
-        playlist = sp.playlist(playlist_id)
-        return playlist
-    except spotipy.exceptions.SpotifyException as e:
-        if e.http_status == 404:
-            raise ValueError(
-                "Couldn't access this playlist. "
-                "Make sure the playlist is public and the link is correct."
-            )
-        raise
+    return found, not_found
 
 
 def create_playlist_on_system_account(name, description=""):
@@ -458,13 +479,27 @@ def create_playlist_on_system_account(name, description=""):
         str: Created playlist ID
     """
     sp = get_system_spotify()
-    user_id = sp.me()["id"]
 
-    playlist = sp.user_playlist_create(
-        user_id,
+    playlist = sp.current_user_playlist_create(
         name,
         public=True,  # Must be public so users can access it
         description=description,
     )
 
     return playlist["id"]
+
+
+def discard_playlist(playlist_id):
+    """
+    Remove a playlist from the system account.
+
+    Unfollowing is Spotify's only delete: it orphans the playlist rather than
+    erasing it. Never raises — callers use this while handling another error.
+
+    Args:
+        playlist_id: Spotify playlist ID
+    """
+    try:
+        get_system_spotify().current_user_unfollow_playlist(playlist_id)
+    except Exception as e:
+        print(f"[SystemAccount] Could not discard playlist {playlist_id}: {e}")
